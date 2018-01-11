@@ -77,6 +77,9 @@ public class GameSession : MonoBehaviour
 
         if (region != null)
         {
+            Gizmos.color = hexToColor("#000000"); // black
+            Gizmos.DrawCube(new Vector3(0,0,0), new Vector3(10000,0,10000));
+
             // set color and draw gizmos
             //int water_level = gameSession.mapGenerator.getRegion().getWaterLevelElevation();
             int order = 0;
@@ -148,7 +151,7 @@ public class GameSession : MonoBehaviour
                         else if (elevation < 160)
                             c = hexToColor("#AEB5BD");
                         else // default
-                            c = new Color(0, 0, 0, 0);
+                            c = hexToColor("#FFFFFF");
                     }
                     //else
                     //    c = new Color(0, 0, 0, 0);

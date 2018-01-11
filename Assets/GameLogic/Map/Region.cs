@@ -30,7 +30,9 @@ namespace Regions
     [System.Serializable] // for unity editor
     public class RegionGenConfig
     {
-        [Range(1, 200000)]
+        private const int maxNumberOfTiles = 64000; // slightly less than ~2^16 -> unity's mesh vertex cont limitation 
+
+        [Range(1, maxNumberOfTiles)]
         public int numberOfTiles;
 
         [Range(0.001f, 50f)]

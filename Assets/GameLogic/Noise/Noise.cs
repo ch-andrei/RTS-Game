@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using Mono.Simd;
 using System;
 using System.Collections.Generic;
 
@@ -9,22 +10,31 @@ namespace HeightMapGenerators
     [System.Serializable]
     public class HeightMapConfig
     {
+        private const float configEpsilon = 1e-3f;
+
         public int preset = -1;
 
         // how uniform the overall terrain should be
-        [Range(0, 1)]
-        public float flatness = 0.25f;
+        [Range(0, 1 - configEpsilon)]
+        public float flattenLinearStrength = 0.25f;
+
+        [Range(0, 1 - configEpsilon)]
+        public float flattenLowsStrength = 0.5f;
+
+        // how much to suppress high elevations
+        [Range(0, 1 - configEpsilon)]
+        public float flattenDampenStrength = 0.25f;
 
         // amplifiction parameter for rescaling height values; high amplifiaction pulls small values smaller, and make high values appear higher; exponential stretching
-        [Range(0, 10)]
+        [Range(1, 10)]
         public float amplification = 10;
 
         // height map resolution depends on region size; this scaler can be used to increase the resolution
-        [Range(0.1f, 10f)]
+        [Range(configEpsilon, 10f)]
         public float resolutionScale = 1f;
 
         // number of discrete values for the height map
-        [Range(1, 100)]
+        [Range(0, 100)]
         public int heightSteps = 50;
 
         public HeightMapConfig()
@@ -38,28 +48,32 @@ namespace HeightMapGenerators
         public bool applyErosion = true;
 
         // number of iterations of erosion computations
-        [Range(0, 200)]
-        public int erosionIterations = 50;
+        [Range(0, 2000)]
+        public int iterations = 50;
 
         // scales the influence of erosion linearly
         [Range(0, 1)]
-        public float erosionStrength = 1f;
+        public float strength = 1f;
 
         // amount of water to deposit during erosion simulation: higher means more erosion; acts like a strength parameter; high values smoothen erossion
         [Range(0, 1)]
-        public float erosionWaterAmount = 0.1f;
+        public float waterAmount = 0.1f;
 
         // amount of water to lose per simulation iteration: water[time k + 1] = erosionWaterLoss * water[time k]
         [Range(0, 1)]
-        public float erosionWaterLoss = 0.99f;
-
-        // scales the influence of erosion on terrain movement (1 means terrain wont move, 0 means maximum terrain movement)
-        [Range(0, 1)]
-        public float earthStability = 0.25f;
+        public float waterLoss = 0.99f;
 
         // limits the influence of elevation difference on terrain movement; acts as maximum elevation difference after which terrain movement won't be affected
         [Range(0, 1)]
-        public float erosionVelocityElevationCap = 0.2f;
+        public float waterVelocityElevationDiffRegularizer = 0.2f;
+
+        // if elevation is in range [0-1], water will contribute to elevation in waterAmount / waterToElevationProportion
+        // ex: elevation = 0.9, waterAmount = 0.2, combined elevation = 0.9 + 0.2 = 1.1 
+        [Range(0, 1)]
+        public float waterToElevationProportion = 0.05f;
+
+        [Range(0, 1)]
+        public float minTerrainMovementProportion = 0.01f;
 
         public ErosionConfig()
         {
@@ -75,16 +89,19 @@ namespace HeightMapGenerators
         private Noise noise;
 
         public int preset { get { return this.config.preset; } }
-        public float flatness { get { return this.config.flatness; } }
+        public float flattenLinearStrength { get { return this.config.flattenLinearStrength; } }
+        public float flattenLowsStrength { get { return this.config.flattenLowsStrength; } }
+        public float flattenDampenStrength { get { return this.config.flattenDampenStrength; } }
         public float amplification { get { return this.config.amplification; } }
         public int heightSteps { get { return this.config.heightSteps; } }
 
-        public int erosionIterations { get { return this.erosionConfig.erosionIterations; } }
-        public float erosionStrength { get { return this.erosionConfig.erosionStrength; } }
-        public float erosionWaterAmount { get { return this.erosionConfig.erosionWaterAmount; } }
-        public float erosionWaterLoss { get { return this.erosionConfig.erosionWaterLoss; } }
-        public float earthStability { get { return this.erosionConfig.earthStability; } }
-        public float erosionVelocityElevationCap { get { return this.erosionConfig.erosionVelocityElevationCap; } }
+        public int erosionIterations { get { return this.erosionConfig.iterations; } }
+        public float erosionStrength { get { return this.erosionConfig.strength; } }
+        public float erosionWaterAmount { get { return this.erosionConfig.waterAmount; } }
+        public float erosionWaterLoss { get { return this.erosionConfig.waterLoss; } }
+        public float erosionWaterVelocityElevationDiffRegularizer { get { return this.erosionConfig.waterVelocityElevationDiffRegularizer; } }
+        public float erosionWaterToElevationProportion { get { return this.erosionConfig.waterToElevationProportion; } }
+        public float erosionMinTerrainMovementProportion { get { return this.erosionConfig.minTerrainMovementProportion; } }
 
         public float read(float u, float v) { return this.noise.lerpNoiseValue(u, v); }
 
@@ -104,7 +121,7 @@ namespace HeightMapGenerators
             switch (preset)
             {
                 case 0:
-                    elevations = applyNormalizedHalfSphere(elevations, elevations.GetLength(0), 1f);
+                    applyNormalizedHalfSphere(elevations);
                     break;
                 case 1:
                     applyLogisticsFunctionToElevations(elevations);
@@ -116,47 +133,61 @@ namespace HeightMapGenerators
                     break;
                 default:
                     Debug.Log("Default noise map.");
+                    //applyNormalizedHalfSphere(elevations, intensity : 0.5f, sphereMaxValue : 0.75f, overwrite: true);
                     amplifyElevations(elevations, amplification);
-                    elevations = applyNormalizedHalfSphere(elevations, elevations.GetLength(0), 0.5f, 0.75f);
                     logarithmicClamp(elevations, 1f, 1);
-                    dampenElevations(elevations);
-                    crushToAverage(elevations, flatness);
+                    dampenElevations(elevations, flattenDampenStrength);
+                    flattenLows(elevations);
+                    flattenLinearToAverage(elevations);
                     break;
             }
 
             computeErosion(elevations);
 
             Utilities.normalize(elevations, maxOnly: true, rescaleSmallMax: false);
+
             normalizeToNElevationLevels(elevations, heightSteps);
 
             this.noise.setNoiseValues(elevations);
         }
 
-        private void crushToAverage(float[,] elevations, float strength = 0.5f)
+        private void flattenLinearToAverage(float[,] elevations)
         {
-            strength = Mathf.Clamp(strength, 0f, 1f);
-
             float[] minMaxAvg = Utilities.computeMinMaxAvg(elevations);
             float avg = minMaxAvg[2];
-
-            Debug.Log("pre AVERAGE: " + avg);
 
             for (int i = 0; i < elevations.GetLength(0); i++)
             {
                 for (int j = 0; j < elevations.GetLength(1); j++)
                 {
-                    elevations[i, j] += (avg - elevations[i, j]) * strength;
+                    elevations[i, j] += flattenLinearStrength * (avg - elevations[i, j]);
                 }
             }
+        }
 
-            minMaxAvg = Utilities.computeMinMaxAvg(elevations);
-            avg = minMaxAvg[2];
+        // flattens low elevations stronger than high elevations; crushes elevations to the min value
+        private void flattenLows(float[,] elevations)
+        {
+            float[] minMaxAvg = Utilities.computeMinMaxAvg(elevations);
+            float min = minMaxAvg[0];
+            float max = minMaxAvg[1];
 
-            Debug.Log("post AVERAGE: " + avg);
+            for (int i = 0; i < elevations.GetLength(0); i++)
+            {
+                for (int j = 0; j < elevations.GetLength(1); j++)
+                {
+                    float distToMin = elevations[i, j] - min;
+                    float ratio = distToMin / (max - min);
+                    elevations[i, j] += flattenLowsStrength * (min - (1f - ratio) * elevations[i, j]);
+                }
+            }
         }
 
         private void normalizeToNElevationLevels(float[,] elevations, int levels)
         {
+            if (levels <= 0)
+                return;
+
             for (int i = 0; i < elevations.GetLength(0); i++)
             {
                 for (int j = 0; j < elevations.GetLength(1); j++)
@@ -205,25 +236,28 @@ namespace HeightMapGenerators
         }
 
         // results in elevation = (amplify_factor * elevation) ^ amplify_factor
-        public void amplifyElevations(float[,] elevations, float amplify_factor, float scale_factor = 1f)
+        public void amplifyElevations(float[,] elevations, float amplifyFactor, float scale_factor = 1f)
         {
+            Utilities.normalize(elevations);
+
             for (int i = 0; i < elevations.GetLength(0); i++)
             {
                 for (int j = 0; j < elevations.GetLength(1); j++)
                 {
-                    elevations[i, j] = Mathf.Pow(scale_factor * elevations[i, j], amplify_factor);
+                    elevations[i, j] = Mathf.Pow(scale_factor * elevations[i, j], amplifyFactor);
                 }
             }
+
             Utilities.normalize(elevations);
         }
 
-        public void dampenElevations(float[,] elevations)
+        public void dampenElevations(float[,] elevations, float strength = 1f)
         {
             for (int i = 0; i < elevations.GetLength(0); i++)
             {
                 for (int j = 0; j < elevations.GetLength(1); j++)
                 {
-                    elevations[i, j] = Mathf.Log(1 + elevations[i, j]);
+                    elevations[i, j] -= strength * (elevations[i, j] - Mathf.Log(1f + Mathf.Epsilon + elevations[i, j]));
                 }
             }
         }
@@ -255,9 +289,12 @@ namespace HeightMapGenerators
 
         // intensity is how strong the sphere effect is
         // threshold is the maximum value on the sphere that will be applied
-        public float[,] applyNormalizedHalfSphere(float[,] elevations, int diameter, float intensity, float sphereMaxValue = 1f)
+        public void applyNormalizedHalfSphere(float[,] elevations, float intensity = 1f, int diameter = -1, float sphereMaxValue = 1f, bool overwrite = false)
         {
-            Debug.Log("applying sphere of diameter " + diameter);
+            diameter = (diameter< 0) ? elevations.GetLength(0) : diameter;
+            if (diameter <= 0)
+                return;
+
             float radius = diameter / 2f;
             float[,] sphere = new float[diameter, diameter];
             for (int i = 0; i < diameter; i++)
@@ -277,7 +314,8 @@ namespace HeightMapGenerators
                     sphere[i, j] = Mathf.Clamp(sphere[i, j], 0, sphereMaxValue);
                 }
             }
-            return Utilities.mergeArrays(sphere, elevations, intensity, 1); ;
+
+            Utilities.mergeArrays(elevations, sphere, 1f, intensity, overwrite);
         }
 
         // *** EROSSION COMPUTATIONS *** //
@@ -291,13 +329,18 @@ namespace HeightMapGenerators
 
             Debug.Log("Computing Erosion: elevations size " + elevations.GetLength(0) + " by " + elevations.GetLength(1));
 
-            erosionDepositWater(waterVolumes, erosionWaterAmount/*, 1f, 4*/);
+            erosionDepositWaterRandom(waterVolumes, erosionWaterAmount, 0.2f, 4);
 
             int numIterations = erosionIterations;
+            float terrainMovement = float.MaxValue;
             while (numIterations-- > 0)
             {
-                computeErosionIteration(elevations, waterVolumes);
-                Debug.Log("Erosion iterations left " + numIterations);
+                terrainMovement = computeErosionIteration(elevations, waterVolumes);
+                Debug.Log("EROSION: Moved " + terrainMovement + ". Iterations left " + numIterations);
+
+                if (terrainMovement < erosionMinTerrainMovementProportion) {
+                    Debug.Log("Erosion loop finished after " + (erosionIterations - numIterations) + " iterations.");
+                }
             }
 
             this.noise.setNoiseValues(elevations);
@@ -336,11 +379,27 @@ namespace HeightMapGenerators
             return neighbors;
         }
 
-        private void computeErosionIteration(float[,] elevations, float[,] waterVolumes)
+        private void checkWater(float[,] waterVolumes) {
+            float sum = 0;
+            for (int i = 0; i < waterVolumes.GetLength(0); i++)
+            {
+                for (int j = 0; j < waterVolumes.GetLength(1); j++)
+                {
+                    sum += waterVolumes[i, j];
+                }
+            }
+
+            Utilities.computeMinMaxAvg(waterVolumes);
+            Debug.Log("Total water amount = " + sum);
+        }
+
+        private float computeErosionIteration(float[,] elevations, float[,] waterVolumes)
         {
             float minWaterThreshold = 1e-3f;
             float velocityElevationToProximityRatio = 0.95f;
             float velocityProximityInfluence = 0.25f;
+
+            checkWater(waterVolumes);
 
             // deep copy of arrays
             float[,] waterUpdated = new float[waterVolumes.GetLength(0), waterVolumes.GetLength(1)];
@@ -352,12 +411,12 @@ namespace HeightMapGenerators
                 }
             }
 
+            float totalTerrainMovement = 0;
             HeightMapTile current;
             for (int i = 0; i < elevations.GetLength(0); i++)
             {
                 for (int j = 0; j < elevations.GetLength(1); j++)
                 {
-
                     // do not do anything for small water amounts
                     if (waterVolumes[i, j] < minWaterThreshold) {
                         //Debug.Log("MIN WATER REACHED");
@@ -372,24 +431,20 @@ namespace HeightMapGenerators
                     // sort in ascending order: lowest first
                     neighbors.Sort((x, y) => x.elevation.CompareTo(y.elevation));
 
-                    // TEMP
-                    // temporary addition: only use the lowest tile neighbor -> remove all but the lowest neighbor
-                    if (neighbors.Count > 1)
-                        neighbors.RemoveRange(1, neighbors.Count - 1);
-                    // TEMP END
-
                     // compute elevation influenced 'velocity' vectors
-                    //List<float> elevationGradientWithWater = new List<float>();
-                    List<float> elevationGradient = new List<float>();
-                    foreach (HeightMapTile t in neighbors)
+                    List<float> elevationGradientWithWater = new List<float>();
+                    //List<float> elevationGradient = new List<float>();
+                    foreach (HeightMapTile neighbor in neighbors)
                     {
-                        //elevationGradientWithWater.Add((current.elevation + waterVolumes[current.i, current.j]) - (t.elevation + waterVolumes[t.i, t.j]));
-                        elevationGradient.Add(current.elevation - t.elevation);
+                        elevationGradientWithWater.Add((current.elevation + waterVolumes[current.i, current.j] * erosionWaterToElevationProportion) - 
+                            (neighbor.elevation + waterVolumes[neighbor.i, neighbor.j] * erosionWaterToElevationProportion));
+                        //elevationGradient.Add(current.elevation - neighbor.elevation);
                     }
 
+                    float[] waterMovement = new float[neighbors.Count];
                     for (int k = 0; k < neighbors.Count; k++)
                     {
-                        if (elevationGradient[k] > 0)
+                        if (elevationGradientWithWater[k] > 0)
                         {
                             // get neighbor
                             HeightMapTile neighbor = neighbors[k];
@@ -403,37 +458,71 @@ namespace HeightMapGenerators
 
                             float waterVelocity;
                             // velocity from elevation
-                            waterVelocity = 1f - Mathf.Exp(-Mathf.Abs(elevationGradient[k]) / erosionVelocityElevationCap); // range [0,1]
+                            waterVelocity = 1f - Mathf.Exp(-Mathf.Abs(elevationGradientWithWater[k]) / erosionWaterVelocityElevationDiffRegularizer); // range [0,1]
 
                             // velocity from proximity
                             // do weighted sum based on constants
                             waterVelocity = waterVelocity * velocityElevationToProximityRatio + (1f - velocityElevationToProximityRatio) * velocityProximityInfluence;
 
-                            float waterLossAmount = erosionStrength * waterVelocity * waterUpdated[current.i, current.j];
+                            float waterLossAmount = waterVelocity * waterUpdated[current.i, current.j];
 
                             //Debug.Log("velocity " + waterVelocity + "; waterLossAmount " + waterLossAmount + " from [" +  current.i + ", " + current.j +
                             //    "] to [" + neighbor.i + ", " + neighbor.j + "] using elev diff " + elevationGradient[k]);
 
-                            // check if want to erode more water than currently available
-                            if (waterLossAmount > waterUpdated[current.i, current.j])
-                                waterLossAmount = waterUpdated[current.i, current.j];
-
-                            // remove water from current
-                            waterUpdated[current.i, current.j] -= waterLossAmount;
-
-                            // add water to neighbor
-                            waterUpdated[neighbor.j, neighbor.j] += waterLossAmount;
-
-                            // compute terrain elevation adjustment
-                            float terrainMovement = waterLossAmount / erosionWaterAmount * (1f - earthStability) * elevationGradient[k];
-
-                            //Debug.Log("terrainMovement " + terrainMovement + " from [" + current.i + ", " + current.j +
-                            //    "] to [" + neighbor.i + ", " + neighbor.j + "]");
-
-                            // adjust elevations
-                            elevations[current.i, current.j] -= terrainMovement;
-                            elevations[neighbor.i, neighbor.j] += terrainMovement;
+                            waterMovement[k] = waterLossAmount;
                         }
+                    }
+
+                    // rescale water movement to account for movement to all neighbors
+                    float waterMovementTotal = 0;
+                    foreach (float f in waterMovement)
+                    {
+                        waterMovementTotal += f;
+                    }
+                    if (waterMovementTotal > 0) {
+                        // rescale
+                        for (int k = 0; k < neighbors.Count; k++)
+                        {
+                            waterMovement[k] *= waterMovement[k] / waterMovementTotal;
+                        }
+
+                        // check if want to move more water than is available
+                        waterMovementTotal = 0;
+                        foreach (float f in waterMovement)
+                        {
+                            waterMovementTotal += f;
+                        }
+                        if (waterMovementTotal > waterUpdated[current.i, current.j])
+                        {
+                            float modifier = waterUpdated[current.i, current.j] / waterMovementTotal;
+                            for (int k = 0; k < neighbors.Count; k++)
+                            {
+                                waterMovement[k] *= modifier;
+                            }
+                        }
+                    }
+
+                    // update water amount and elevations
+                    for (int k = 0; k < neighbors.Count; k++) {
+                        HeightMapTile neighbor = neighbors[k];
+
+                        // remove water from current
+                        waterUpdated[current.i, current.j] -= waterMovement[k];
+
+                        // add water to neighbor
+                        waterUpdated[neighbor.i, neighbor.j] += waterMovement[k];
+
+                        // compute terrain elevation adjustment
+                        float terrainMovement = erosionStrength * elevationGradientWithWater[k] * (waterMovement[k] / erosionWaterAmount);
+
+                        //Debug.Log("terrainMovement " + terrainMovement + " from [" + current.i + ", " + current.j +
+                        //    "] to [" + neighbor.i + ", " + neighbor.j + "]");
+
+                        // adjust elevations
+                        elevations[current.i, current.j] -= terrainMovement;
+                        elevations[neighbor.i, neighbor.j] += terrainMovement;
+
+                        totalTerrainMovement += terrainMovement;
                     }
                 }
             }
@@ -449,6 +538,8 @@ namespace HeightMapGenerators
 
             // simulate drying effect
             erosionRemoveWater(waterVolumes, erosionWaterLoss);
+
+            return totalTerrainMovement;
         }
 
         private void erosionRemoveWater(float[,] waterVolumes, float erosionWaterLoss)
@@ -496,7 +587,7 @@ namespace HeightMapGenerators
                             {
                                 try
                                 {
-                                    waterVolumes[ii, jj] += Mathf.Clamp(UnityEngine.Random.Range(0f, waterAmount * probability), 0, waterAmount);
+                                    waterVolumes[ii, jj] += UnityEngine.Random.Range(waterAmount * probability, waterAmount);
                                 }
                                 catch (NullReferenceException e)
                                 {

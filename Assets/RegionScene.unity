@@ -289,32 +289,34 @@ MonoBehaviour:
   seed: 1
   useRandomSeed: 0
   drawGizmos: 1
-  gizmoSize: 4
+  gizmoSize: 5
   gizmoSkip: 0
   regenerate: 0
   regionGenConfig:
-    numberOfTiles: 9746
+    numberOfTiles: 64000
     tileSize: 3
     maxElevation: 200
   heightMapConfig:
     preset: -1
-    flatness: 0
-    amplification: 4.08
-    resolutionScale: 2
-    heightSteps: 100
+    flattenLinearStrength: 0.165
+    flattenLowsStrength: 0.953
+    flattenDampenStrength: 0.982
+    amplification: 2.33
+    resolutionScale: 1
+    heightSteps: 0
   noiseConfig:
-    amplitude: 5
-    persistance: 0.548
-    octaves: 6
-    levels: 4
+    amplitude: 130
+    persistance: 0.844
+    octaves: 12
+    levels: 7
   erosionConfig:
     applyErosion: 1
-    erosionIterations: 20
-    erosionStrength: 0.774
-    erosionWaterAmount: 0.505
-    erosionWaterLoss: 0.956
-    earthStability: 0.755
-    erosionVelocityElevationCap: 0.17
+    iterations: 2000
+    strength: 1
+    waterAmount: 1
+    waterLoss: 0.99
+    waterVelocityElevationDiffRegularizer: 0.2
+    waterToElevationProportion: 0.1
 --- !u!4 &227661624
 Transform:
   m_ObjectHideFlags: 0

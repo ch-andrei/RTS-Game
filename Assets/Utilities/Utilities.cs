@@ -74,7 +74,7 @@ public class Utilities
         Debug.Log("Post min/max/avg: " + min + "/" + max + "/" + avg / (values.GetLength(0) * values.GetLength(0)));
     }
 
-    public static float[,] mergeArrays(float[,] a, float[,] b, float weightA, float weightB)
+    public static float[,] mergeArrays(float[,] a, float[,] b, float weightA, float weightB, bool overwrite = false)
     {
         if (weightA <= 0 && weightB <= 0)
         {
@@ -87,26 +87,37 @@ public class Utilities
 
         // works with arrays of different size
         bool choice = a.GetLength(0) > b.GetLength(0);
-        float[,] c = (choice) ? new float[a.GetLength(0), a.GetLength(0)] : new float[b.GetLength(0), b.GetLength(0)];
-        double ratio = (double)a.GetLength(0) / b.GetLength(0);
-        for (int i = 0; i < c.GetLength(0); i++)
+
+        float[,] dst;
+        if (overwrite)
         {
-            for (int j = 0; j < c.GetLength(0); j++)
+            dst = a;
+        }
+        else
+        {
+            dst = (choice) ? new float[a.GetLength(0), a.GetLength(0)] : new float[b.GetLength(0), b.GetLength(0)];
+        }
+
+        double ratio = (double)a.GetLength(0) / b.GetLength(0);
+        for (int i = 0; i < dst.GetLength(0); i++)
+        {
+            for (int j = 0; j < dst.GetLength(0); j++)
             {
                 // sum weighted values
                 if (choice)
                 {
-                    c[i, j] = weightA * a[i, j] + weightB * b[(int)(i / ratio), (int)(j / ratio)];
+                    dst[i, j] = weightA * a[i, j] + weightB * b[(int)(i / ratio), (int)(j / ratio)];
                 }
                 else
                 {
-                    c[i, j] = weightA * a[(int)(i * ratio), (int)(j * ratio)] + weightB * b[i, j];
+                    dst[i, j] = weightA * a[(int)(i * ratio), (int)(j * ratio)] + weightB * b[i, j];
                 }
                 // rescale the values back
-                c[i, j] /= (weightA + weightB);
+                dst[i, j] /= (weightA + weightB);
             }
         }
-        return c;
+
+        return dst;
     }
 
     public class statsXMLreader
