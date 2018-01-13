@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 using Regions;
-using Tiles;
+using HexRegions;
 using HeightMapGenerators;
 
 public class GameSession : MonoBehaviour
@@ -38,14 +38,14 @@ public class GameSession : MonoBehaviour
         this.region = new HexRegion(seed, regionGenConfig, heightMapConfig, noiseConfig, erosionConfig);
     }
 
+    public Region getRegion() {
+        return this.region;
+    }
+
     // Use this for initialization
     void Start()
     {
-        generateMap();
-    }
-
-    public void generateMap()
-    {
+        Debug.Log("Starting game session.");
         Awake();
     }
 

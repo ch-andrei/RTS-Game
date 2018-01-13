@@ -189,6 +189,7 @@ GameObject:
   - component: {fileID: 200546908}
   - component: {fileID: 200546907}
   - component: {fileID: 200546906}
+  - component: {fileID: 200546910}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -252,13 +253,74 @@ Transform:
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 200546905}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1, z: -10}
+  m_LocalRotation: {x: 0.18557723, y: -0.37253, z: 0.07630004, w: 0.9060689}
+  m_LocalPosition: {x: 679, y: 399, z: -626}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 23.15, y: -44.7, z: 0}
+--- !u!114 &200546910
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 200546905}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6e56473b4a8c84a4bb2deb14a573c583, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  yaw:
+    activate: 1
+    keyboardAxis: 0
+    modifiers:
+      leftAlt: 1
+      leftControl: 0
+      leftShift: 0
+    sensitivity: 1
+  pitch:
+    activate: 1
+    keyboardAxis: 1
+    modifiers:
+      leftAlt: 1
+      leftControl: 0
+      leftShift: 0
+    sensitivity: 1
+  roll:
+    activate: 1
+    keyboardAxis: 0
+    modifiers:
+      leftAlt: 1
+      leftControl: 1
+      leftShift: 0
+    sensitivity: 1
+  verticalTranslation:
+    activate: 1
+    keyboardAxis: 1
+    modifiers:
+      leftAlt: 0
+      leftControl: 1
+      leftShift: 0
+    sensitivity: 1
+  horizontalTranslation:
+    activate: 1
+    keyboardAxis: 0
+    modifiers:
+      leftAlt: 0
+      leftControl: 0
+      leftShift: 0
+    sensitivity: 1
+  depthTranslation:
+    activate: 1
+    keyboardAxis: 1
+    modifiers:
+      leftAlt: 0
+      leftControl: 0
+      leftShift: 0
+    sensitivity: 1
+  keyboardHorizontalAxisName: Horizontal
+  keyboardVerticalAxisName: Vertical
 --- !u!1 &227661622
 GameObject:
   m_ObjectHideFlags: 0
@@ -270,7 +332,7 @@ GameObject:
   - component: {fileID: 227661623}
   m_Layer: 0
   m_Name: GameSession
-  m_TagString: Untagged
+  m_TagString: GameSession
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -287,36 +349,37 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   seed: 1
-  useRandomSeed: 0
+  useRandomSeed: 1
   drawGizmos: 1
-  gizmoSize: 5
+  gizmoSize: 2
   gizmoSkip: 0
   regenerate: 0
   regionGenConfig:
     numberOfTiles: 64000
-    tileSize: 3
-    maxElevation: 200
+    tileSize: 1
+    maxElevation: 25
   heightMapConfig:
     preset: -1
-    flattenLinearStrength: 0.165
-    flattenLowsStrength: 0.953
-    flattenDampenStrength: 0.982
-    amplification: 2.33
-    resolutionScale: 1
-    heightSteps: 0
+    flattenLinearStrength: 0.141
+    flattenLowsStrength: 0.713
+    flattenDampenStrength: 0.115
+    amplification: 3.28
+    resolutionScale: 2
+    heightSteps: 10
   noiseConfig:
     amplitude: 130
-    persistance: 0.844
+    persistance: 0.842
     octaves: 12
     levels: 7
   erosionConfig:
-    applyErosion: 1
-    iterations: 2000
+    applyErosion: 0
+    iterations: 200
     strength: 1
     waterAmount: 1
-    waterLoss: 0.99
-    waterVelocityElevationDiffRegularizer: 0.2
-    waterToElevationProportion: 0.1
+    waterLoss: 0.999
+    waterVelocityElevationDiffRegularizer: 1
+    waterToElevationProportion: 0.519
+    minTerrainMovementProportion: 0.25
 --- !u!4 &227661624
 Transform:
   m_ObjectHideFlags: 0
@@ -326,7 +389,106 @@ Transform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
-  m_Children: []
+  m_Children:
+  - {fileID: 324954648}
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &324954647
+GameObject:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  serializedVersion: 5
+  m_Component:
+  - component: {fileID: 324954648}
+  - component: {fileID: 324954652}
+  - component: {fileID: 324954651}
+  - component: {fileID: 324954650}
+  - component: {fileID: 324954649}
+  m_Layer: 0
+  m_Name: RegionView
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &324954648
+Transform:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 324954647}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 227661624}
+  m_RootOrder: 0
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!64 &324954649
+MeshCollider:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 324954647}
+  m_Material: {fileID: 0}
+  m_IsTrigger: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Convex: 0
+  m_CookingOptions: 14
+  m_SkinWidth: 0.01
+  m_Mesh: {fileID: 0}
+--- !u!23 &324954650
+MeshRenderer:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 324954647}
+  m_Enabled: 1
+  m_CastShadows: 1
+  m_ReceiveShadows: 1
+  m_DynamicOccludee: 1
+  m_MotionVectors: 1
+  m_LightProbeUsage: 1
+  m_ReflectionProbeUsage: 1
+  m_Materials:
+  - {fileID: 2100000, guid: 52d4be2635d765c49aa4118df2a5b114, type: 2}
+  m_StaticBatchInfo:
+    firstSubMesh: 0
+    subMeshCount: 0
+  m_StaticBatchRoot: {fileID: 0}
+  m_ProbeAnchor: {fileID: 0}
+  m_LightProbeVolumeOverride: {fileID: 0}
+  m_ScaleInLightmap: 1
+  m_PreserveUVs: 0
+  m_IgnoreNormalsForChartDetection: 0
+  m_ImportantGI: 0
+  m_StitchLightmapSeams: 0
+  m_SelectedEditorRenderState: 3
+  m_MinimumChartSize: 4
+  m_AutoUVMaxDistance: 0.5
+  m_AutoUVMaxAngle: 89
+  m_LightmapParameters: {fileID: 0}
+  m_SortingLayerID: 0
+  m_SortingLayer: 0
+  m_SortingOrder: 0
+--- !u!33 &324954651
+MeshFilter:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 324954647}
+  m_Mesh: {fileID: 0}
+--- !u!114 &324954652
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 324954647}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 57757e060ba6cfe439499bd7b6f61ca5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

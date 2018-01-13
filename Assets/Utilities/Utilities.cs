@@ -1,9 +1,115 @@
 ﻿using System.Xml;
 using System.Collections.Generic;
 using UnityEngine;
+using System.Linq;
 
 public class Utilities
 {
+    public class MeshGenerator
+    {
+        // adds a triangle to the mesh
+        public static void addTriangle(Vector3Int triangle, List<Vector3> verticesLocal, List<Vector3> vertices, List<int> triangles, bool reordered = true)
+        {
+            // adds vertices clockwise along x, z plane 
+            List<Vector3> temp = new List<Vector3>();
+            temp.Add(verticesLocal[triangle.x]);
+            temp.Add(verticesLocal[triangle.y]);
+            temp.Add(verticesLocal[triangle.z]);
+
+            if (reordered)
+            {
+                // compute central location
+                Vector3 center = (temp[0] + temp[1] + temp[2]) / 3;
+                // sort vectors by angle, clockwise so that the normal point outside
+                temp = temp.OrderBy(o => (-Mathf.Atan((o.x - center.x) / (o.z - center.z)))).ToList();
+            }
+
+            // add triangle
+            foreach (Vector3 v in temp)
+            {
+                vertices.Add(v);
+                triangles.Add(triangles.Count);
+            }
+        }
+
+        private struct VertexData
+        {
+            public Vector3 v { get; set; }
+            public Vector2 uv { get; set; }
+            public VertexData(Vector3 v, Vector2 uv)
+            {
+                this.v = v;
+                this.uv = uv;
+            }
+        }
+
+        // adds a triangle to the mesh
+        public static void addTriangle(Vector3Int triangle, List<Vector3> verticesLocal, List<Vector3> vertices, List<int> triangles,
+                                            List<Vector3> normals, List<Vector2> uvsLocal, List<Vector2> uvs, int triangleOffset = 0)
+        {
+            // adds vertices clockwise along x, z plane 
+            List<VertexData> verts = new List<VertexData>();
+            verts.Add(new VertexData(verticesLocal[triangle.x], uvsLocal[triangle.x]));
+            verts.Add(new VertexData(verticesLocal[triangle.y], uvsLocal[triangle.y]));
+            verts.Add(new VertexData(verticesLocal[triangle.z], uvsLocal[triangle.z]));
+
+            // compute central location
+            Vector3 center = (verts[0].v + verts[1].v + verts[2].v) / 3;
+
+            // sort vectors by angle, clockwise so that the normal points upwards
+            verts = verts.OrderBy(o => (-Mathf.Atan((o.v.x - center.x) / (o.v.z - center.z)))).ToList();
+
+            Vector3 normal = Vector3.Cross(verts[1].v - verts[0].v, verts[2].v - verts[0].v).normalized;
+
+            // add triangle
+            foreach (VertexData v in verts)
+            {
+                vertices.Add(v.v);
+                normals.Add(normal);
+                triangles.Add(triangleOffset + triangles.Count);
+                uvs.Add(v.uv);
+            }
+        }
+
+        // adds a triangle to the mesh
+        public static void addTriangle(Vector3Int triangle, List<Vector3> verticesLocal, Dictionary<Vector3, int> vertices, List<int> triangles,
+                                            List<Vector3> normals, List<Vector2> uvsLocal, List<Vector2> uvs)
+        {
+            // adds vertices clockwise along x, z plane 
+            List<VertexData> verts = new List<VertexData>();
+            verts.Add(new VertexData(verticesLocal[triangle.x], uvsLocal[triangle.x]));
+            verts.Add(new VertexData(verticesLocal[triangle.y], uvsLocal[triangle.y]));
+            verts.Add(new VertexData(verticesLocal[triangle.z], uvsLocal[triangle.z]));
+
+            // compute central location
+            Vector3 center = (verts[0].v + verts[1].v + verts[2].v) / 3;
+
+            // sort vectors by angle, clockwise so that the normal points upwards
+            verts = verts.OrderBy(o => (-Mathf.Atan((o.v.x - center.x) / (o.v.z - center.z)))).ToList();
+
+            Vector3 normal = Vector3.Cross(verts[1].v - verts[0].v, verts[2].v - verts[0].v).normalized;
+
+            // add triangle
+            foreach (VertexData v in verts)
+            {
+                int index;
+                if (vertices.ContainsKey(v.v))
+                {
+                    index = vertices[v.v];
+                }
+                else
+                {
+                    index = vertices.Keys.Count;
+                    vertices.Add(v.v, index);
+                }
+
+                triangles.Add(index);
+                normals.Add(normal);
+                uvs.Add(v.uv);
+            }
+        }
+    }
+
     public static Color hexToColor(string hex)
     {
         Color c = new Color();
