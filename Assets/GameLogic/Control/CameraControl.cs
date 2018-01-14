@@ -6,9 +6,12 @@ using System.Collections;
 using UnityEngine;
 using System;
 
+using Regions;
+
 [AddComponentMenu("Camera-Control/Keyboard")]
 public class CameraControl : MonoBehaviour
 {
+    public static float globalSensitivity = 2F;
 
     public static Vector3 restrictionCenterPoint, viewCenterPoint;
 
@@ -21,16 +24,14 @@ public class CameraControl : MonoBehaviour
     static float viewCenterOnPlayerLimiterInertia = 0.5f; // how 
 
     // distances in Unity units
-    static int cameraLimitDistance = 250; // how far camera can move away from the player
-    static int minCameraToGroundDistance = 20; // how close to ground the camera can go before limiter will start resisting
-    static int maxCameraToGroundDistance = 150; // how high camera can go before limiter will start resisting
+    static int cameraLimitDistance = 500; // how far camera can move away from the player
+    static int minCameraToGroundDistance = 2; // how close to ground the camera can go before limiter will start resisting
+    static int maxCameraToGroundDistance = 200; // how high camera can go before limiter will start resisting
 
     static float limiterInertia = 0.1f;
     // speed limiter must be adjusted given maxCameraToGroundDistance; shorter max dist requires higher limiter
     static float cameraTooHighSpeedLimiter = 1.5f; // lower means less resistance
     static float cameraTooLowSpeedLimiter = 5f; // this one needs to be resistive otherwise camera will dip into objects
-
-    static float global_sensitivity = 1F;
 
     // Keyboard axes buttons in the same order as Unity
     public enum KeyboardAxis { Horizontal = 0, Vertical = 1, None = 3 }
@@ -55,7 +56,6 @@ public class CameraControl : MonoBehaviour
     // Handles common parameters for translations and rotations
     public class KeyboardControlConfiguration
     {
-
         public bool activate;
         public KeyboardAxis keyboardAxis;
         public Modifiers modifiers;
@@ -68,22 +68,22 @@ public class CameraControl : MonoBehaviour
     }
 
     // Yaw default configuration
-    public KeyboardControlConfiguration yaw = new KeyboardControlConfiguration { keyboardAxis = KeyboardAxis.Horizontal, modifiers = new Modifiers { leftAlt = true }, sensitivity = global_sensitivity };
+    public KeyboardControlConfiguration yaw = new KeyboardControlConfiguration { keyboardAxis = KeyboardAxis.Horizontal, modifiers = new Modifiers { leftAlt = true }, sensitivity = globalSensitivity };
 
     // Pitch default configuration
-    public KeyboardControlConfiguration pitch = new KeyboardControlConfiguration { keyboardAxis = KeyboardAxis.Vertical, modifiers = new Modifiers { leftAlt = true }, sensitivity = global_sensitivity };
+    public KeyboardControlConfiguration pitch = new KeyboardControlConfiguration { keyboardAxis = KeyboardAxis.Vertical, modifiers = new Modifiers { leftAlt = true }, sensitivity = globalSensitivity };
 
     // Roll default configuration
-    public KeyboardControlConfiguration roll = new KeyboardControlConfiguration { keyboardAxis = KeyboardAxis.Horizontal, modifiers = new Modifiers { leftAlt = true, leftControl = true }, sensitivity = global_sensitivity };
+    public KeyboardControlConfiguration roll = new KeyboardControlConfiguration { keyboardAxis = KeyboardAxis.Horizontal, modifiers = new Modifiers { leftAlt = true, leftControl = true }, sensitivity = globalSensitivity };
 
     // Vertical translation default configuration
-    public KeyboardControlConfiguration verticalTranslation = new KeyboardControlConfiguration { keyboardAxis = KeyboardAxis.Vertical, modifiers = new Modifiers { leftControl = true }, sensitivity = global_sensitivity };
+    public KeyboardControlConfiguration verticalTranslation = new KeyboardControlConfiguration { keyboardAxis = KeyboardAxis.Vertical, modifiers = new Modifiers { leftControl = true }, sensitivity = globalSensitivity };
 
     // Horizontal translation default configuration
-    public KeyboardControlConfiguration horizontalTranslation = new KeyboardControlConfiguration { keyboardAxis = KeyboardAxis.Horizontal, sensitivity = global_sensitivity };
+    public KeyboardControlConfiguration horizontalTranslation = new KeyboardControlConfiguration { keyboardAxis = KeyboardAxis.Horizontal, sensitivity = globalSensitivity };
 
     // Depth (forward/backward) translation default configuration
-    public KeyboardControlConfiguration depthTranslation = new KeyboardControlConfiguration { keyboardAxis = KeyboardAxis.Vertical, sensitivity = global_sensitivity };
+    public KeyboardControlConfiguration depthTranslation = new KeyboardControlConfiguration { keyboardAxis = KeyboardAxis.Vertical, sensitivity = globalSensitivity };
 
     // Default unity names for keyboard axes
     public string keyboardHorizontalAxisName = "Horizontal";
@@ -91,14 +91,19 @@ public class CameraControl : MonoBehaviour
 
     private string[] keyboardAxesNames;
 
+    private Region region;
+
     void Start()
     {
         keyboardAxesNames = new string[] { keyboardHorizontalAxisName, keyboardVerticalAxisName };
 
         transform.position = getCameraPositionPlayerCentered();
 
+        GameObject go = GameObject.FindGameObjectWithTag("GameSession");
+        region = ((GameSession)go.GetComponent(typeof(GameSession))).getRegion();
+
         restrictionCenterPoint = new Vector3(0, 0, 0); // GameControl.gameSession.humanPlayer.getPos();
-        viewCenterPoint = new Vector3();
+        viewCenterPoint = region.getTileAt(restrictionCenterPoint).coord.getPos();
     }
 
     // LateUpdate  is called once per frame after all Update are done
@@ -208,14 +213,14 @@ public class CameraControl : MonoBehaviour
         }
         try
         {
-            Vector3 tileBelow = new Vector3(0, 20, 0);
+            Vector3 tileBelow = region.getTileAt(transform.position).coord.getPos();
 
-            float offsetAboveGround = transform.position.y - (tileBelow.y) - minCameraToGroundDistance;
+            float offsetAboveFloor = transform.position.y - (tileBelow.y) - minCameraToGroundDistance;
             float offsetBelowCeiling = tileBelow.y + maxCameraToGroundDistance - (transform.position.y);
 
-            if (offsetAboveGround < 0)
+            if (offsetAboveFloor < 0)
             { // camera too low based on tile height
-                transform.position -= new Vector3(0, offsetAboveGround, 0) * limiterInertia * cameraTooLowSpeedLimiter;
+                transform.position -= new Vector3(0, offsetAboveFloor, 0) * limiterInertia * cameraTooLowSpeedLimiter;
             }
             else if (offsetBelowCeiling < 0)
             { // camera too high 

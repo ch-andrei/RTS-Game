@@ -7,20 +7,39 @@ namespace Regions
 {
     public class Coord
     {
-        protected Vector3 coord { get; set; }
-        public float x { get { return this.coord.x; } }
-        public float y { get { return this.coord.y; } }
-        public float z { get { return this.coord.z; } }
+        protected Vector3 pos;
+        public float x { get { return this.pos.x; } }
+        public float y { get { return this.pos.y; } }
+        public float z { get { return this.pos.z; } }
 
-        public Coord(Vector3 coord)
+        public Coord(Vector3 pos)
         {
-            this.coord = coord;
+            this.pos = pos;
         }
 
         public Vector3 getPos()
         {
-            return this.coord;
+            return pos;
         }
+    }
+
+    public class Tile
+    {
+        public Coord coord;
+        public int i;
+        public int j;
+        
+
+        public Tile(Coord coord, int i, int j)
+        {
+            this.coord = coord;
+            this.i = i;
+            this.j = j;
+        }
+
+        public Vector2Int index() { return new Vector2Int(this.i, this.j); }
+
+        public bool equals(Tile tile) { return this.i == tile.i && this.j == tile.j; }
     }
 
     [System.Serializable] // for unity editor
@@ -48,9 +67,10 @@ namespace Regions
 
         protected HeightMap heightMap;
 
-        protected float maxElevation, minElevation, averageElevation, waterLevelElevation;
+        //protected float maxElevation, minElevation, averageElevation, waterLevelElevation;
 
-        public Coord[,] tiles;
+        public Tile[,] tiles;
+        public abstract Tile getTileAt(Vector3 pos);
         public abstract List<Coord> getTileVertices();
 
         // act as indices for the SquareNeighbors array

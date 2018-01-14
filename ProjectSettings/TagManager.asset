@@ -5,6 +5,11 @@ TagManager:
   serializedVersion: 2
   tags:
   - GameSession
+  - MouseOverIndicator
+  - SelectionIndicator
+  - RegionView
+  - PathIndicator
+  - PathExploredIndicator
   layers:
   - Default
   - TransparentFX

@@ -4,6 +4,7 @@ using UnityEngine;
 
 using Regions;
 using HexRegions;
+using Noises;
 using HeightMapGenerators;
 
 public class GameSession : MonoBehaviour
@@ -46,15 +47,10 @@ public class GameSession : MonoBehaviour
     void Start()
     {
         Debug.Log("Starting game session.");
-        Awake();
     }
 
     public void Update()
     {
-        if (region == null)
-        {
-            Awake();
-        }
     }
 
     public Color hexToColor(string hex)
