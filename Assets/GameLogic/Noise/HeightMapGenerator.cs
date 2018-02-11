@@ -5,6 +5,7 @@ using System.Collections.Generic;
 
 using SquareRegions;
 using Noises;
+using Utilities.Misc;
 
 namespace HeightMapGenerators
 {
@@ -145,7 +146,7 @@ namespace HeightMapGenerators
 
             computeErosion(elevations);
 
-            Utilities.normalize(elevations, maxOnly: true, rescaleSmallMax: false);
+            Tools.normalize(elevations, maxOnly: true, rescaleSmallMax: false);
 
             normalizeToNElevationLevels(elevations, heightSteps);
 
@@ -154,7 +155,7 @@ namespace HeightMapGenerators
 
         private void flattenLinearToAverage(float[,] elevations)
         {
-            float[] minMaxAvg = Utilities.computeMinMaxAvg(elevations);
+            float[] minMaxAvg = Tools.computeMinMaxAvg(elevations);
             float avg = minMaxAvg[2];
 
             for (int i = 0; i < elevations.GetLength(0); i++)
@@ -169,7 +170,7 @@ namespace HeightMapGenerators
         // flattens low elevations stronger than high elevations; crushes elevations to the min value
         private void flattenLows(float[,] elevations)
         {
-            float[] minMaxAvg = Utilities.computeMinMaxAvg(elevations);
+            float[] minMaxAvg = Tools.computeMinMaxAvg(elevations);
             float min = minMaxAvg[0];
             float max = minMaxAvg[1];
 
@@ -238,7 +239,7 @@ namespace HeightMapGenerators
         // results in elevation = (amplify_factor * elevation) ^ amplify_factor
         public void amplifyElevations(float[,] elevations, float amplifyFactor, float scaleFactor = 1f)
         {
-            Utilities.normalize(elevations);
+            Tools.normalize(elevations);
 
             for (int i = 0; i < elevations.GetLength(0); i++)
             {
@@ -248,7 +249,7 @@ namespace HeightMapGenerators
                 }
             }
 
-            Utilities.normalize(elevations);
+            Tools.normalize(elevations);
         }
 
         public void dampenElevations(float[,] elevations, float strength = 1f)
@@ -315,7 +316,7 @@ namespace HeightMapGenerators
                 }
             }
 
-            Utilities.mergeArrays(elevations, sphere, 1f, intensity, overwrite);
+            Tools.mergeArrays(elevations, sphere, 1f, intensity, overwrite);
         }
 
         // *** EROSSION COMPUTATIONS *** //
@@ -389,7 +390,7 @@ namespace HeightMapGenerators
                 }
             }
 
-            Utilities.computeMinMaxAvg(waterVolumes);
+            Tools.computeMinMaxAvg(waterVolumes);
             Debug.Log("Total water amount = " + sum);
         }
 

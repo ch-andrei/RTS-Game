@@ -368,7 +368,7 @@ MonoBehaviour:
   gizmoSkip: 20
   regenerate: 0
   regionGenConfig:
-    numberOfTiles: 64000
+    numberOfTiles: 1500
     tileSize: 1
     maxElevation: 100
   heightMapConfig:

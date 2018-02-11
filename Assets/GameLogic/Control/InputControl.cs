@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 using Regions;
-using HexRegions;
+using Utilities.Misc;
 using Pathfinding;
 
 [AddComponentMenu("Input-Control")]
@@ -61,7 +61,7 @@ public class InputControl : MonoBehaviour
         // create GUI style
         guiStyle = new GUIStyle();
         guiStyle.alignment = TextAnchor.LowerLeft;
-        guiStyle.normal.textColor = Utilities.hexToColor("#153870");
+        guiStyle.normal.textColor = Tools.hexToColor("#153870");
 
         AstarPF = new AstarPathFinder(maxDepth: 50, maxCost: 1000, maxIncrementalCost: maxActionPoints);
         DijsktraPF = new DijkstraPathFinder(maxDepth: maxActionPoints,
@@ -131,8 +131,8 @@ public class InputControl : MonoBehaviour
                             playersCanBlockPath: true
                             ),
                         writeToGlobalPathResult: false,
-                        displayTimeInSeconds: 0.05f,
-                        drawExplored: true));
+                        displayTimeInSeconds: 0.01f,
+                        drawExplored: false));
 
                 if (mouseOverTile != null)
                 {
@@ -148,7 +148,7 @@ public class InputControl : MonoBehaviour
                                      playersCanBlockPath: true
                                      ),
                                  writeToGlobalPathResult: false,
-                                 displayTimeInSeconds: 0.05f,
+                                 displayTimeInSeconds: 0.01f,
                                  drawExplored: false,
                                  drawCost: true
                                  ));
@@ -201,7 +201,7 @@ public class InputControl : MonoBehaviour
                             playersCanBlockPath: true
                             ),
                         writeToGlobalPathResult: false,
-                        displayTimeInSeconds: 0.05f,
+                        displayTimeInSeconds: 0.01f,
                         drawExplored: false));
 
             }
@@ -230,7 +230,7 @@ public class InputControl : MonoBehaviour
         }
     }
 
-    public IEnumerator displayPath(PathResult pr, float displayTimeInSeconds = 2f, bool writeToGlobalPathResult = true, bool drawExplored = false, bool drawCost = false)
+    public IEnumerator displayPath(PathResult pr, float displayTimeInSeconds = 0.01f, bool drawPath = true, bool writeToGlobalPathResult = true, bool drawExplored = false, bool drawCost = false)
     {
         List<GameObject> pathIndicators = null;
         List<GameObject> exploredIndicators = null;
@@ -245,14 +245,18 @@ public class InputControl : MonoBehaviour
             pathIndicators = new List<GameObject>();
             exploredIndicators = new List<GameObject>();
 
-            // draw path info
-            foreach (Tile tile in pr.getTilesOnPathStartFirst())
+            if (drawPath)
             {
-                GameObject _pathIndicator = Instantiate(pathIndicator);
-                _pathIndicator.transform.parent = this.transform;
-                _pathIndicator.transform.position = tile.coord.getPos() + ySelectionOffset;
-                pathIndicators.Add(_pathIndicator);
+                // draw path info
+                foreach (Tile tile in pr.getTilesOnPathStartFirst())
+                {
+                    GameObject _pathIndicator = Instantiate(pathIndicator);
+                    _pathIndicator.transform.parent = this.transform;
+                    _pathIndicator.transform.position = tile.coord.getPos() + ySelectionOffset;
+                    pathIndicators.Add(_pathIndicator);
+                }
             }
+
 
             if (drawExplored)
             {

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 using Regions;
+using Utilities.PriorityQueue;
 
 namespace Pathfinding
 {
@@ -92,6 +93,7 @@ namespace Pathfinding
             this.maxIncrementalCost = maxIncrementalCost;
         }
 
+        // TODO: refactor this to be handled by region
         // assumes the tiles are adjacent to each other
         public virtual float costBetween(PathTile t1, PathTile t2)
         {
@@ -216,7 +218,7 @@ namespace Pathfinding
             PathTile goalPt = new PathTile(goal);
 
             // set up lists 
-            Utilities.PriorityQueue<PathTile> frontier = new Utilities.PriorityQueue<PathTile>();
+            PriorityQueue<PathTile> frontier = new PriorityQueue<PathTile>();
             Dictionary<Vector2Int, PathTile> explored = new Dictionary<Vector2Int, PathTile>();
             Dictionary<Vector2Int, PathTile> previous = new Dictionary<Vector2Int, PathTile>();
             Dictionary<Vector2Int, float> costs = new Dictionary<Vector2Int, float>();

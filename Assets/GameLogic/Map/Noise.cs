@@ -1,6 +1,8 @@
 ﻿using System;
 using UnityEngine;
 
+using Utilities.Misc;
+
 namespace Noises {
 
     public abstract class Noise
@@ -163,7 +165,7 @@ namespace Noises {
                 float[,] baseNoise = generateWhiteNoise(getNoiseRes());
                 float[,] perlinNoise = generatePerlinNoise(baseNoise, octaveCount);
                 // merge results of new perlin level with previous perlinNoise
-                perlinNoiseCombined = Utilities.mergeArrays(perlinNoise, perlinNoiseCombined, 1f / levels, (float)i / levels);
+                perlinNoiseCombined = Tools.mergeArrays(perlinNoise, perlinNoiseCombined, 1f / levels, (float)i / levels);
             }
             return perlinNoiseCombined;
         }

@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEngine;
 
 using Regions;
+using Utilities.MeshTools;
 
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider))]
 public class RegionView : MonoBehaviour
@@ -94,7 +95,7 @@ public class RegionView : MonoBehaviour
                                 uvsLocal.Add(region.coordUV(tiles[ind1.x, ind1.y].coord));
                                 uvsLocal.Add(region.coordUV(tiles[ind2.x, ind2.y].coord));
 
-                                Utilities.MeshGenerator.addTriangle(new Vector3Int(0, 1, 2), verticesLocal, verticesDict, tris, normals, uvsLocal, uvs);
+                                MeshTriAdder.addTriangle(new Vector3Int(0, 1, 2), verticesLocal, verticesDict, tris, normals, uvsLocal, uvs);
                                 trisCount++;
                             }
                         }

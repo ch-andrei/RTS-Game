@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 using Regions;
-using HexRegions;
+using Utilities.Misc;
 using SquareRegions;
 
 using Noises;
@@ -57,7 +57,7 @@ public class GameSession : MonoBehaviour
 
     public Color hexToColor(string hex)
     {
-        return Utilities.hexToColor(hex);
+        return Tools.hexToColor(hex);
     }
 
     private void OnDrawGizmos()
