@@ -4,6 +4,8 @@ using UnityEngine;
 
 using Regions;
 using HexRegions;
+using SquareRegions;
+
 using Noises;
 using HeightMapGenerators;
 
@@ -36,7 +38,7 @@ public class GameSession : MonoBehaviour
 
         int seed = useRandomSeed ? UnityEngine.Random.Range(int.MinValue, int.MaxValue) : this.seed;
 
-        this.region = new HexRegion(seed, regionGenConfig, heightMapConfig, noiseConfig, erosionConfig);
+        this.region = new SquareRegion(seed, regionGenConfig, heightMapConfig, noiseConfig, erosionConfig);
     }
 
     public Region getRegion() {

@@ -11,10 +11,10 @@ using Pathfinding;
 public class InputControl : MonoBehaviour
 {
     [Range(0,100)]
-    public int maxActionPoints = 10;
+    public int maxActionPoints = 50;
 
     [Range(0, 100)]
-    public int actionPoints = 10;
+    public int actionPoints = 50;
 
     public bool showGUI = true;
 
@@ -63,7 +63,7 @@ public class InputControl : MonoBehaviour
         guiStyle.alignment = TextAnchor.LowerLeft;
         guiStyle.normal.textColor = Utilities.hexToColor("#153870");
 
-        AstarPF = new AstarPathFinder(maxDepth: 50, maxCost: 50, maxIncrementalCost: maxActionPoints);
+        AstarPF = new AstarPathFinder(maxDepth: 50, maxCost: 1000, maxIncrementalCost: maxActionPoints);
         DijsktraPF = new DijkstraPathFinder(maxDepth: maxActionPoints,
                                             maxCost: actionPoints,
                                             maxIncrementalCost: maxActionPoints
@@ -125,13 +125,13 @@ public class InputControl : MonoBehaviour
                 StartCoroutine(
                     displayPath(
                         DijsktraPF.pathFromTo(
-                            (HexRegion)gameSession.getRegion(),
+                            gameSession.getRegion(),
                             firstClickedTile,
                             new Tile(new Coord(new Vector3(float.MaxValue, float.MaxValue, float.MaxValue)), int.MaxValue, int.MaxValue),
                             playersCanBlockPath: true
                             ),
                         writeToGlobalPathResult: false,
-                        displayTimeInSeconds: 0.1f,
+                        displayTimeInSeconds: 0.05f,
                         drawExplored: true));
 
                 if (mouseOverTile != null)
@@ -142,13 +142,13 @@ public class InputControl : MonoBehaviour
                         StartCoroutine(
                             displayPath(
                                  AstarPF.pathFromTo(
-                                     (HexRegion)gameSession.getRegion(),
+                                     gameSession.getRegion(),
                                      firstClickedTile,
                                      mouseOverTile,
                                      playersCanBlockPath: true
                                      ),
                                  writeToGlobalPathResult: false,
-                                 displayTimeInSeconds: 0.1f,
+                                 displayTimeInSeconds: 0.05f,
                                  drawExplored: false,
                                  drawCost: true
                                  ));
@@ -195,13 +195,13 @@ public class InputControl : MonoBehaviour
                 StartCoroutine(
                     displayPath(
                         DijsktraPF.pathFromTo(
-                            (HexRegion)gameSession.getRegion(),
+                            gameSession.getRegion(),
                             firstClickedTile,
                             mouseOverTile,
                             playersCanBlockPath: true
                             ),
                         writeToGlobalPathResult: false,
-                        displayTimeInSeconds: 0.1f,
+                        displayTimeInSeconds: 0.05f,
                         drawExplored: false));
 
             }
@@ -225,7 +225,7 @@ public class InputControl : MonoBehaviour
         if (start != null && goal != null)
         {
             // compute path
-            PathResult pr = pathFinder.pathFromTo((HexRegion)gameSession.getRegion(), start, goal);
+            PathResult pr = pathFinder.pathFromTo(gameSession.getRegion(), start, goal);
             yield return displayPath(pr, displayTimeInSeconds, writeToGlobalPathResult, drawExplored: true);
         }
     }
@@ -328,7 +328,7 @@ public class InputControl : MonoBehaviour
                 string pathInfo = "Path cost:" + pathResult.pathCost;
                 foreach (Tile tile in pathResult.getTilesOnPathStartFirst())
                 {
-                    pathInfo += "\n" + tile.index();
+                    pathInfo += "\n" + tile.index;
                 }
                 GUI.Label(new Rect(menuWidth, Screen.height - menuHeight, menuWidth, menuHeight), pathInfo, guiStyle);
             }

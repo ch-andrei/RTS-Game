@@ -3,7 +3,7 @@ using Mono.Simd;
 using System;
 using System.Collections.Generic;
 
-using Regions;
+using SquareRegions;
 using Noises;
 
 namespace HeightMapGenerators
@@ -358,12 +358,12 @@ namespace HeightMapGenerators
             }
         }
 
-        private List<HeightMapTile> getNeighborTiles(int i, int j)
+        private List<HeightMapTile> mapGetNeighborTiles(int i, int j)
         {
             float[,] elevations = this.noise.getNoiseValues();
 
             List<HeightMapTile> neighbors = new List<HeightMapTile>();
-            foreach (Vector2Int dir in Region.SquareNeighbors) {
+            foreach (Vector2Int dir in SquareRegion.SquareUtilities.SquareNeighborsNoDiag) {
                 try
                 {
                     int ii = i + dir.x;
@@ -426,7 +426,7 @@ namespace HeightMapGenerators
                     current = new HeightMapTile(i, j, elevations[i,j]);
                     
                     // get tile neighbors
-                    List<HeightMapTile> neighbors = getNeighborTiles(i, j);
+                    List<HeightMapTile> neighbors = mapGetNeighborTiles(i, j);
 
                     // sort in ascending order: lowest first
                     neighbors.Sort((x, y) => x.elevation.CompareTo(y.elevation));

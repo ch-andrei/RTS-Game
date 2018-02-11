@@ -13,14 +13,7 @@ namespace HexRegions {
     {
         public RegionGenConfig regionGenConfig;
 
-        public int gridRadius;
-        public float regionSize;
-        public float center;
-        public float water;
-        public float hexHeight;
-        public float hexSize;
-
-        private float minElevation, maxElevation, avgElevation;
+        public float tileHeight;
 
         public HexRegion(int seed,
             RegionGenConfig regionGenConfig,
@@ -31,25 +24,19 @@ namespace HexRegions {
             this.regionGenConfig = regionGenConfig;
 
             // compute required array dimensions
-            this.gridRadius = getGridSizeForHexagonalGridWithNHexes(this.regionGenConfig.numberOfTiles);
+            this.gridRadius = computeGridRadius();
 
             noiseConfig.resolution = (int)(this.gridRadius * heightMapConfig.resolutionScale) + 1;
             this.heightMap = new HeightMap(seed, heightMapConfig, noiseConfig, erosionConfig);
 
-            this.hexSize = regionGenConfig.tileSize;
-            this.hexHeight = this.hexSize * Mathf.Sqrt(3f) / 2f;
+            this.tileSize = regionGenConfig.tileSize;
+            this.tileHeight = this.tileSize * Mathf.Sqrt(3f) / 2f;
 
             computeHexTileCenterCoords();
 
             computeElevationParameters();
 
             Debug.Log("Generated hex region.");
-        }
-
-        public Vector2 coordUV(Coord coord) {
-            float u = coord.x / regionSize + 1f / 2f;
-            float v = coord.z / regionSize + 1f / 2f;
-            return new Vector2(u, v);
         }
 
         private void computeHexTileCenterCoords()
@@ -62,7 +49,7 @@ namespace HexRegions {
 
             coords = new Tile[arraySize, arraySize];
 
-            this.regionSize = hexSize * arraySize * 2;
+            this.regionSize = tileSize * arraySize * 2;
             float centerOffset = regionSize / 2;
 
             // loop over X and Y in hex cube coordinatess
@@ -84,8 +71,8 @@ namespace HexRegions {
                     int Z = (int)HexUtilities.axialToCubeCoord(new Vector2(X, Y)).z;
 
                     // compute tile pos in unity axis coordinates
-                    float x = hexSize * X * 3f / 2f;
-                    float z = hexHeight * (Y - Z);
+                    float x = tileSize * X * 3f / 2f;
+                    float z = tileHeight * (Y - Z);
 
                     Vector2 uv = coordUV(new Coord(new Vector3(x, 0, z)));
 
@@ -115,7 +102,7 @@ namespace HexRegions {
                     {
                         int ii = 2 * i + 1, jj = 2 * j + 1;
 
-                        Vector3[] hexVertices = (new Hexagon(tile.getPos(), this.hexSize, this.hexHeight)).getVertices();
+                        Vector3[] hexVertices = (new Hexagon(tile.getPos(), this.tileSize, this.tileHeight)).getVertices();
 
                         vertices[ii, jj] = new Coord(hexVertices[0]);
 
@@ -146,7 +133,7 @@ namespace HexRegions {
         override
         public Tile getTileAt(Vector3 pos)
         {
-            Vector2 index = worldCoordToIndex(new Vector2(pos.x, pos.z));
+            Vector2 index = regionWorldCoordToIndex(new Vector2(pos.x, pos.z));
 
             int i, j;
             i = (int)index.x + this.gridRadius;
@@ -161,167 +148,36 @@ namespace HexRegions {
             return this.tiles[i, j];
         }
 
-        // unity units coordinates
-        public List<Tile> getTileNeighbors(Vector3 tilePos)
-        {
-            return getTileNeighbors(worldCoordToIndex(tilePos));
-        }
-
-        // array index coordinates
-        public List<Tile> getTileNeighbors(Vector2Int tileIndex)
-        {
-            List<Tile> neighbors = new List<Tile>();
-            foreach (Vector2Int dir in HexUtilities.HexNeighbors)
-            {
-                try
-                {
-                    Vector2Int index = tileIndex + dir;
-                    Tile neighbor = this.tiles[index.x, index.y];
-                    if (neighbor != null)
-                        neighbors.Add(neighbor);
-                }
-                catch (IndexOutOfRangeException e)
-                {
-                    // nothing to do
-                }
-            }
-            return neighbors;
-        }
-
         // unity coordinate system to hexagonal coords
-        private Vector2 worldCoordToIndex(Vector2 pos)
+        override
+        protected Vector3 regionWorldCoordToIndex(float x, float y)
         {
-            return worldCoordToIndex(pos.x, pos.y);
-        }
-        private Vector2 worldCoordToIndex(Vector3 pos)
-        {
-            return worldCoordToIndex(pos.x, pos.z);
-        }
-        private Vector2 worldCoordToIndex(float x, float y)
-        {
-            float q = (x) * 2f / 3f / this.hexSize;
-            float r = (float)(-(x) / 3f + Math.Sqrt(3f) / 3f * (y)) / this.hexSize;
+            float q = (x) * 2f / 3f / this.tileSize;
+            float r = (float)(-(x) / 3f + Math.Sqrt(3f) / 3f * (y)) / this.tileSize;
             return HexUtilities.roundAxialToCube(new Vector2(q, r));
         }
 
         // *** REGION SIZE COMPUTATIONS *** //
-
-        private int getGridSizeForHexagonalGridWithNHexes(int n)
+        override
+        protected int computeGridRadius()
         {
             int numberOfHexes = 1;
             int size = 1;
-            while (numberOfHexes <= n)
+            while (numberOfHexes <= this.regionGenConfig.numberOfTiles)
             {
                 numberOfHexes += (size++) * 6;
             }
             return size - 2;
         }
 
-        // *** ELEVATION PARAMETERS COMPUTATIONS *** //
-
-        private void computeElevationParameters()
-        {
-            this.minElevation = this.computeMinimumElevation();
-            this.maxElevation = this.computeMaximumElevation();
-            this.avgElevation = this.computeAverageElevation();
-        }
-
-        public float computeAverageElevation()
-        {
-            double sum = 0;
-            List<Coord> coords = getTileVertices();
-            foreach (Coord coord in coords)
-            {
-                sum += coord.y;
-            }
-            return (float)(sum / (coords.Count));
-        }
-
-        public float computeMaximumElevation()
-        {
-            float max = -float.MaxValue;
-            List<Coord> coords = getTileVertices();
-            foreach (Coord coord in coords)
-            {
-                if (max < coord.y)
-                {
-                    max = coord.y;
-                }
-            }
-            return max;
-        }
-
-        public float computeMinimumElevation()
-        {
-            float min = float.MaxValue;
-
-            List<Coord> coords = getTileVertices();
-            foreach (Coord coord in coords)
-            {
-                if (min > coord.y)
-                {
-                    min = coord.y;
-                }
-            }
-
-            return min;
-        }
-
         // *** GETTERS AND SETTERS *** //
 
         override
-        public List<Coord> getTileVertices()
-        {
-            List<Coord> _tiles = new List<Coord>();
-
-            int length = tiles.GetLength(0);
-            for (int i = 0; i < length; i++)
-            {
-                for (int j = 0; j < length; j++)
-                {
-                    if (tiles[i, j] != null)
-                        _tiles.Add(tiles[i, j].coord);
-                }
-            }
-
-            return _tiles;
+        public List<Vector2Int> getNeighborDirections() {
+            return new List<Vector2Int>(HexUtilities.HexNeighbors);
         }
 
-        public Tile[,] getTiles()
-        {
-            return this.tiles;
-        }
-
-        //public int getMinimumElevation()
-        //{
-        //    return this.minElevation;
-        //}
-        //public int getMaximumElevation()
-        //{
-        //    return this.maxElevation;
-        //}
-        //public int getAverageElevation()
-        //{
-        //    return this.averageElevation;
-        //}
-        //public int getWaterLevelElevation()
-        //{
-        //    return this.waterLevelElevation;
-        //}
-        //public int getViewableSize()
-        //{
-        //    return this.regionConfig.regionSize;
-        //}
-        //public long getViewableSeed()
-        //{
-        //    return this.regionConfig.regionGenConfig.seed;
-        //}
-        //public int getMaxTileIndex()
-        //{
-        //    return this.tiles.GetLength(0);
-        //}
-        // convenience for storing tile data
-        public class HexUtilities
+        public static class HexUtilities
         {
             // act as indices for the Neighbors array
             public enum HexDirections : byte

@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using UnityEngine;
 
 using Regions;
-using HexRegions;
 
 namespace Pathfinding
 {
@@ -74,7 +73,7 @@ namespace Pathfinding
 
         public bool equals(PathTile pt) { return this.tile.equals(pt.tile); }
 
-        public Vector2Int getKey() { return this.tile.index(); }
+        public Vector2Int getKey() { return this.tile.index; }
     }
 
     public abstract class PathFinder
@@ -96,7 +95,7 @@ namespace Pathfinding
         // assumes the tiles are adjacent to each other
         public virtual float costBetween(PathTile t1, PathTile t2)
         {
-            float cost = 1f; // base cost between tiles
+            float cost = ((t1.tile.index - t2.tile.index).magnitude > 1f) ? Mathf.Sqrt(2f) : 1f; // base cost between tiles
 
             // cost due to elevation
             float elevationDelta = (t2.tile.coord.y - t1.tile.coord.y);
@@ -104,6 +103,8 @@ namespace Pathfinding
                 cost -= elevationDelta / downElevatonPerPoint;
             else
                 cost += elevationDelta / upElevatonPerPoint;
+
+            //Debug.Log("PathFinder cost between " + t1.tile.index + " and " + t2.tile.index + ": " + cost + " elevation influence " + (elevationDelta / downElevatonPerPoint));
 
             // cost due to tile attributes
             //cost += t2.tile.moveCostPenalty;
@@ -113,12 +114,12 @@ namespace Pathfinding
             return cost;
         }
 
-        public abstract PathResult pathFromTo(HexRegion region, Tile start, Tile goal, bool playersCanBlockPath = false);
+        public abstract PathResult pathFromTo(Region region, Tile start, Tile goal, bool playersCanBlockPath = false);
     }
 
     public class LongDistancePathFinder : PathFinder
     {
-        private static int _maxDepth = 25;
+        private static int _maxDepth = 50;
         private static float _maxCost = 500;
 
         DijkstraPathFinder DijsktraPF;
@@ -131,7 +132,7 @@ namespace Pathfinding
         }
 
         override
-        public PathResult pathFromTo(HexRegion region, Tile start, Tile goal, bool playersCanBlockPath = false)
+        public PathResult pathFromTo(Region region, Tile start, Tile goal, bool playersCanBlockPath = false)
         {
             // attempt normal Dijsktra pathfinder first
             PathResult pr = DijsktraPF.pathFromTo(
@@ -207,7 +208,8 @@ namespace Pathfinding
         {
         }
 
-        public virtual PathResult pathFromTo(HexRegion region, Tile start, Tile goal, HeuristicPathFinder heuristic, bool playersCanBlockPath = false)
+        override
+        public PathResult pathFromTo(Region region, Tile start, Tile goal, bool playersCanBlockPath = false)
         {
             PathResult pathResult = new PathResult();
 
@@ -225,8 +227,8 @@ namespace Pathfinding
             crt.depth = 0;
 
             frontier.Enqueue(crt, 0);
-            previous[crt.tile.index()] = null;
-            costs[crt.tile.index()] = 0;
+            previous[crt.tile.index] = null;
+            costs[crt.tile.index] = 0;
 
             // start pathfinding
             while (!frontier.IsEmpty())
@@ -235,19 +237,19 @@ namespace Pathfinding
                 crt = frontier.Dequeue();
 
                 // record that the tile was explored
-                explored[crt.tile.index()]= crt;
+                explored[crt.tile.index]= crt;
 
                 if (crt.equals(goalPt))
                 {
                     // reached goal; search complete
                     pathResult.reachedGoal = true;
-                    pathResult.pathCost = costs[crt.tile.index()];
+                    pathResult.pathCost = costs[crt.tile.index];
                     break;
                 }
 
                 // get neighbor tiles
                 List<PathTile> neighbors = new List<PathTile>();
-                foreach (Tile neighborTile in region.getTileNeighbors(crt.tile.index()))
+                foreach (Tile neighborTile in region.getTileNeighbors(crt.tile.index))
                 {
                     PathTile neighbor = new PathTile(neighborTile);
                     //neighborPt.cost = crt.cost + costBetween(crt, neighborPt);
@@ -276,21 +278,21 @@ namespace Pathfinding
                     //        _cost = float.PositiveInfinity; // set highest cost to signify that the tile is unreachable
                     //}
 
-                    cost = costs[crt.tile.index()] + _cost;
+                    cost = costs[crt.tile.index] + _cost;
 
                     if (cost <= maxCost)
                     {
-                        if (!costs.ContainsKey(neighbor.tile.index()) || cost < costs[neighbor.tile.index()])
+                        if (!costs.ContainsKey(neighbor.tile.index) || cost < costs[neighbor.tile.index])
                         {
-                            costs[neighbor.tile.index()] = cost;
+                            costs[neighbor.tile.index] = cost;
 
                             // compute heuristic priority
-                            priority = cost + heuristic.heuristic(neighbor, goalPt);
+                            priority = cost + heuristic(region, neighbor, goalPt);
                             priority -= neighbor.depth * heuristicDepthInfluence; // makes so that tiles closest to goal are more eagerly explored
 
                             frontier.Enqueue(neighbor, priority);
 
-                            previous[neighbor.tile.index()] = crt;
+                            previous[neighbor.tile.index] = crt;
                         }
                     }
                 }
@@ -301,12 +303,12 @@ namespace Pathfinding
             {
                 pathResult.addPathtile(goalPt);
 
-                crt = previous[goal.index()];
+                crt = previous[goal.index];
 
                 while (crt != null)
                 {
                     pathResult.addPathtile(crt);
-                    crt = previous[crt.tile.index()];
+                    crt = previous[crt.tile.index];
                 }
             }
 
@@ -318,28 +320,21 @@ namespace Pathfinding
             return pathResult;
         }
 
-        override
-        public PathResult pathFromTo(HexRegion region, Tile start, Tile goal, bool playersCanBlockPath = false)
-        {
-            return pathFromTo(region, start, goal, this, playersCanBlockPath);
-        }
-
         // *** HEURISTIC COMPUTATIONS *** ///
 
-        public abstract float heuristic(PathTile start, PathTile goal);
+        public abstract float heuristic(Region region, PathTile start, PathTile goal);
     }
 
     public class AstarPathFinder : HeuristicPathFinder
     {
-
         public AstarPathFinder(int maxDepth, float maxCost, float maxIncrementalCost) : base(maxDepth, maxCost, maxIncrementalCost)
         {
         }
 
         override
-        public float heuristic(PathTile start, PathTile goal)
+        public float heuristic(Region region, PathTile start, PathTile goal)
         {
-            float cost = HexRegion.HexUtilities.distanceBetweenHexCoords(start.tile.index(), goal.tile.index());
+            float cost = region.distanceBetweenTiles(start.tile, goal.tile);
             float elevationDelta = start.tile.coord.y - goal.tile.coord.y;
             if (elevationDelta < 0)
                 cost += -elevationDelta / downElevatonPerPoint;
@@ -351,23 +346,21 @@ namespace Pathfinding
 
     public class DijkstraPathFinder : HeuristicPathFinder
     {
-
         public DijkstraPathFinder(int maxDepth, float maxCost, float maxIncrementalCost) : base(maxDepth, maxCost, maxIncrementalCost)
         {
         }
 
         override
-        public float heuristic(PathTile start, PathTile goal)
+        public float heuristic(Region region, PathTile start, PathTile goal)
         {
+            // Dijkstra can be considered as a special case of A* where heuristic is always equal zero
             return 0;
         }
-
     }
 
     public class DijkstraUniformCostPathFinder : DijkstraPathFinder
     {
-
-        float uniformCost;
+        private float uniformCost;
 
         public DijkstraUniformCostPathFinder(float uniformCost, int maxDepth, float maxCost, float maxIncrementalCost = 0) : base(maxDepth, maxCost, maxIncrementalCost)
         {

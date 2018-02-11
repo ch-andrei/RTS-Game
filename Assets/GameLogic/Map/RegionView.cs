@@ -4,12 +4,11 @@ using System.Linq;
 using UnityEngine;
 
 using Regions;
-using HexRegions;
 
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer), typeof(MeshCollider))]
-public class HexRegionView : MonoBehaviour
+public class RegionView : MonoBehaviour
 {
-    HexRegion region;
+    Region region;
 
     public void Awake()
     {
@@ -18,9 +17,9 @@ public class HexRegionView : MonoBehaviour
 
     public void Start()
     {
-        Debug.Log("Starting hexregionview.");
+        Debug.Log("Starting regionview.");
         GameObject go = GameObject.FindGameObjectWithTag("GameSession");
-        region = (HexRegion)((GameSession)go.GetComponent(typeof(GameSession))).getRegion();
+        region = ((GameSession)go.GetComponent(typeof(GameSession))).getRegion();
         InitializeMesh();
     }
 
@@ -52,6 +51,8 @@ public class HexRegionView : MonoBehaviour
         float yTotal = 0;
         int trisCount = 0;
         int length = tiles.GetLength(0);
+        List<Vector2Int> neighbors = region.getNeighborDirections();
+        int numNeighbors = neighbors.Count;
         for (int i = 0; i < length; i++)
         {
             for (int j = 0; j < length; j++)
@@ -59,17 +60,17 @@ public class HexRegionView : MonoBehaviour
                 if (tiles[i, j] != null)
                 {
                     // for every neighbor
-                    for (int s = 0; s < 6; s++)
+                    for (int s = 0; s < numNeighbors; s++)
                     {
-                        int t = (s + 1) % 6;
+                        int t = (s + 1) % numNeighbors;
 
                         try
                         {
-                            Vector2Int ind1 = HexRegion.HexUtilities.HexNeighbors[s] + new Vector2Int(i, j);
-                            Vector2Int ind2 = HexRegion.HexUtilities.HexNeighbors[t] + new Vector2Int(i, j);
+                            Vector2Int ind1 = new Vector2Int(i, j) + neighbors[s];
+                            Vector2Int ind2 = new Vector2Int(i, j) + neighbors[t];
 
                             // compute string key for the triangle
-                            float[] triInds = new float[] { (i * length + j), (ind1.x * length + ind1.y), (ind2.x * length + ind2.y) };
+                            int[] triInds = new int[] { (i * length + j), (ind1.x * length + ind1.y), (ind2.x * length + ind2.y) };
                             Array.Sort(triInds);
                             string triStringKey = "";
                             foreach (float f in triInds)
@@ -104,7 +105,8 @@ public class HexRegionView : MonoBehaviour
             }
         }
 
-        Debug.Log("Generated " + trisCount + " triangles total height " + yTotal + ".");
+        Debug.Log("Tiles with size " + length);
+        Debug.Log("Built a mesh with " + verticesDict.Keys.Count + " vertices and " + trisCount + " triangles; total height " + yTotal + ".");
 
         Mesh mesh = new Mesh();
 
