@@ -38,8 +38,8 @@ namespace Regions
             this.i = i;
             this.j = j;
         }
-
-        public bool equals(Tile tile) { return this.i == tile.i && this.j == tile.j; }
+        
+        public bool Equals(Tile tile) { return this.i == tile.i && this.j == tile.j; }
     }
 
     [System.Serializable] // for unity editor

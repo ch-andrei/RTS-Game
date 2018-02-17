@@ -72,7 +72,7 @@ namespace Pathfinding
 
         public PathTile(Tile tile) { this.tile = tile; }
 
-        public bool equals(PathTile pt) { return this.tile.equals(pt.tile); }
+        public bool equals(PathTile pt) { return this.tile.Equals(pt.tile); }
 
         public Vector2Int getKey() { return this.tile.index; }
     }

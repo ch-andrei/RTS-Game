@@ -11,27 +11,58 @@ using Regions;
 [AddComponentMenu("Camera-Control/Keyboard")]
 public class CameraControl : MonoBehaviour
 {
-    public static float globalSensitivity = 2F;
+    public float globalSensitivity = 2f; // global movement speed
 
-    public static Vector3 restrictionCenterPoint, viewCenterPoint;
+    #region MouseControlConfiguration
 
-    static float viewCenterOffset = 200f;
+    // camera scrolling sensitivity
+    [Header("Scrolling")]
+    public float scrollingSensitivityModifier = 10f;
 
-    private static bool toggleCenterPointFocus = false;
-    private static bool centeringOnPlayer = false;
+    // edge scrolling
+    [Header("Edge scrolling")]
+    public bool allowEdgeScrolling = false;
+    public int edgeScrollDetectBorderThickness = 15;
 
-    static float viewCenterOnPlayerOffset = 75f; // how far from player position the camera will be set when focusing on player
-    static float viewCenterOnPlayerLimiterInertia = 0.5f; // how 
+    // mouse control camera translation
+    [Header("Mouse Scrolling")]
+    public bool allowMouseTranslation = true;
+    public float mouseTranslationSensitivityModifier = 1f; // mouse translation movement speed modifier
 
-    // distances in Unity units
-    static int cameraLimitDistance = 500; // how far camera can move away from the player
-    static int minCameraToGroundDistance = 2; // how close to ground the camera can go before limiter will start resisting
-    static int maxCameraToGroundDistance = 200; // how high camera can go before limiter will start resisting
+    // mouse rotation control
+    [Header("Mouse Rotation")]
+    public bool allowMouseRotation = true;
+    public float mouseRotationSensitivityModifier = 100f; // mouse rotation movement speed modifier
 
-    static float limiterInertia = 0.1f;
+    // zoom with FOV 
+    [Header("Camera zoom")]
+    public bool allowCameraZoom = true;
+    public float cameraZoomSensitivityModifier = 1f;
+    public float cameraFovMin = 30f;
+    public float cameraFovMax = 120f;
+
+    #endregion
+
+    #region CameraControlConfiguration
+
+    // camera restriction
+    [Header("Camera restriction")]
+
+    public float viewCenterOffset = 200f; // camera view center point offset; calculated as this far in front of camera
+    public float viewCenterOnPlayerOffset = 75f; // how far from player position the camera will be set when focusing on player
+    public float viewCenterOnPlayerLimiterInertia = 0.5f; // how 
+
     // speed limiter must be adjusted given maxCameraToGroundDistance; shorter max dist requires higher limiter
-    static float cameraTooHighSpeedLimiter = 1.5f; // lower means less resistance
-    static float cameraTooLowSpeedLimiter = 5f; // this one needs to be resistive otherwise camera will dip into objects
+    public float limiterInertia = 0.1f;
+
+    public float cameraLimitDistance = 500f; // how far camera can move away from the player
+    public float minCameraToGroundDistance = 2f; // how close to ground the camera can go before limiter will start resisting
+    public float maxCameraToGroundDistance = 200f; // how high camera can go before limiter will start resisting
+
+    public float cameraTooHighSpeedLimiter = 1.5f; // lower means less resistance
+    public float cameraTooLowSpeedLimiter = 5f; // this one needs to be resistive otherwise camera will dip into objects
+
+    #endregion
 
     // Keyboard axes buttons in the same order as Unity
     public enum KeyboardAxis { Horizontal = 0, Vertical = 1, None = 3 }
@@ -67,36 +98,17 @@ public class CameraControl : MonoBehaviour
         }
     }
 
-    // Yaw default configuration
-    public KeyboardControlConfiguration yaw = new KeyboardControlConfiguration { keyboardAxis = KeyboardAxis.Horizontal, modifiers = new Modifiers { leftAlt = true }, sensitivity = globalSensitivity };
+    private Vector3 mousePreviousPosition;
 
-    // Pitch default configuration
-    public KeyboardControlConfiguration pitch = new KeyboardControlConfiguration { keyboardAxis = KeyboardAxis.Vertical, modifiers = new Modifiers { leftAlt = true }, sensitivity = globalSensitivity };
+    private Vector3 restrictionCenterPoint, viewCenterPoint;
 
-    // Roll default configuration
-    public KeyboardControlConfiguration roll = new KeyboardControlConfiguration { keyboardAxis = KeyboardAxis.Horizontal, modifiers = new Modifiers { leftAlt = true, leftControl = true }, sensitivity = globalSensitivity };
-
-    // Vertical translation default configuration
-    public KeyboardControlConfiguration verticalTranslation = new KeyboardControlConfiguration { keyboardAxis = KeyboardAxis.Vertical, modifiers = new Modifiers { leftControl = true }, sensitivity = globalSensitivity };
-
-    // Horizontal translation default configuration
-    public KeyboardControlConfiguration horizontalTranslation = new KeyboardControlConfiguration { keyboardAxis = KeyboardAxis.Horizontal, sensitivity = globalSensitivity };
-
-    // Depth (forward/backward) translation default configuration
-    public KeyboardControlConfiguration depthTranslation = new KeyboardControlConfiguration { keyboardAxis = KeyboardAxis.Vertical, sensitivity = globalSensitivity };
-
-    // Default unity names for keyboard axes
-    public string keyboardHorizontalAxisName = "Horizontal";
-    public string keyboardVerticalAxisName = "Vertical";
-
-    private string[] keyboardAxesNames;
+    private bool toggleCenterPointFocus = false;
+    private bool centeringOnPlayer = false;
 
     private Region region;
 
     void Start()
     {
-        keyboardAxesNames = new string[] { keyboardHorizontalAxisName, keyboardVerticalAxisName };
-
         transform.position = getCameraPositionPlayerCentered();
 
         GameObject go = GameObject.FindGameObjectWithTag("GameSession");
@@ -104,12 +116,13 @@ public class CameraControl : MonoBehaviour
 
         restrictionCenterPoint = new Vector3(0, 0, 0); // GameControl.gameSession.humanPlayer.getPos();
         viewCenterPoint = region.getTileAt(restrictionCenterPoint).coord.getPos();
+
+        mousePreviousPosition = Input.mousePosition;
     }
 
     // LateUpdate  is called once per frame after all Update are done
     void LateUpdate()
     {
-
         if (toggleCenterPointFocus && !centeringOnPlayer)
         {
             toggleCenterPointFocus = false;
@@ -123,51 +136,110 @@ public class CameraControl : MonoBehaviour
         cameraPos.y = 0;
         cameraDir.y = 0;
 
-        // update view center 
-        restrictionCenterPoint = new Vector3(0, 0, 0); // GameControl.gameSession.humanPlayer.getPos();
         viewCenterPoint = cameraPos + cameraDir * viewCenterOffset;
 
-        // COMPUTE MOVEMENT
-        if (yaw.isActivated())
-        { // camera rotate left/right
-            float rotationX = Input.GetAxis(keyboardAxesNames[(int)yaw.keyboardAxis]) * yaw.sensitivity;
-            transform.Rotate(0, rotationX, 0, Space.World);
-        }
-        if (pitch.isActivated())
-        { // camera rotate up/down
-            float rotationY = Input.GetAxis(keyboardAxesNames[(int)pitch.keyboardAxis]) * pitch.sensitivity;
-            transform.Rotate(-rotationY, 0, 0);
-        }
-        //if (roll.isActivated()) {
-        //    float rotationZ = Input.GetAxis(keyboardAxesNames[(int)roll.keyboardAxis]) * roll.sensitivity;
-        //    transform.Rotate(0, 0, rotationZ, Space.World);
-        //}
-        if (verticalTranslation.isActivated())
+        if (Input.GetMouseButtonDown(1))
         {
-            float translateY = Input.GetAxis(keyboardAxesNames[(int)verticalTranslation.keyboardAxis]) * verticalTranslation.sensitivity;
-            transform.Translate(0, translateY, 0, Space.World);
+            mousePreviousPosition = Input.mousePosition;
+            Debug.Log(mousePreviousPosition);
         }
-        if (horizontalTranslation.isActivated())
-        {
-            Vector3 direction = transform.right;
-            direction.y = 0;
-            direction.Normalize();
-            transform.Translate(Input.GetAxis(keyboardAxesNames[(int)horizontalTranslation.keyboardAxis]) * horizontalTranslation.sensitivity * direction, Space.World);
-        }
-        if (depthTranslation.isActivated())
-        { // camera move forward/backword
-            Vector3 direction = transform.forward;
-            direction.y = 0;
-            direction.Normalize();
-            transform.Translate(Input.GetAxis(keyboardAxesNames[(int)depthTranslation.keyboardAxis]) * depthTranslation.sensitivity * direction, Space.World);
-        }
+
+        processCameraMovement();
+        processCameraRotation();
+        processCameraZoom();
 
         limitCamera();
     }
 
-    public static void toggleCenterOnPlayer()
+    public void toggleCenterOnPlayer()
     {
         toggleCenterPointFocus = !toggleCenterPointFocus;
+    }
+
+    private void processCameraMovement() {
+        Vector3 movement = Vector3.zero;
+
+        // keyboard and edge scrolling
+
+        Vector3 mouseDelta = Input.mousePosition - mousePreviousPosition;
+        Vector3 forward = transform.forward;
+        Vector3 right = transform.right;
+
+        forward.y = 0;
+        right.y = 0;
+
+        if (Input.GetKey(KeyCode.W) || (allowEdgeScrolling && Input.mousePosition.y >= Screen.height - edgeScrollDetectBorderThickness))
+        {
+            movement += forward;
+        }
+        if (Input.GetKey(KeyCode.S) || (allowEdgeScrolling && Input.mousePosition.y <= edgeScrollDetectBorderThickness))
+        {
+            movement -= forward;
+        }
+        if (Input.GetKey(KeyCode.A) || (allowEdgeScrolling && Input.mousePosition.x <= edgeScrollDetectBorderThickness))
+        {
+            movement -= right;
+        }
+        if (Input.GetKey(KeyCode.D) || (allowEdgeScrolling && Input.mousePosition.x >= Screen.width - edgeScrollDetectBorderThickness))
+        {
+            movement += right;
+        }
+        if (Input.GetKey(KeyCode.Q))
+        {
+            movement += Vector3.down;
+        }
+        if (Input.GetKey(KeyCode.E))
+        {
+            movement += Vector3.up;
+        }
+
+        // scrolling with mouse
+        if (allowMouseTranslation && Input.GetMouseButton(2))
+        {
+            Vector3 mouseTranslation = Vector3.zero;
+            mouseTranslation += forward * -mouseDelta.x / Screen.width;
+            mouseTranslation += right * -mouseDelta.y / Screen.height;
+
+            movement += mouseTranslation * mouseTranslationSensitivityModifier;
+        }
+
+        movement *= scrollingSensitivityModifier * globalSensitivity * Time.deltaTime;
+        transform.Translate(movement, Space.World);
+    }
+
+    private void processCameraRotation()
+    {
+        if (allowMouseRotation && Input.GetMouseButton(1)) // right mouse
+        {
+            if (mousePreviousPosition.x >= 0 &&
+                mousePreviousPosition.y >= 0 &&
+                mousePreviousPosition.x <= Screen.width &&
+                mousePreviousPosition.y <= Screen.height)
+            {
+                Vector3 rotation = Vector3.zero;
+                Vector3 mouseDelta = Input.mousePosition - mousePreviousPosition;
+
+                rotation += Vector3.up * mouseDelta.x / Screen.width; // horizontal
+                rotation += Vector3.left * mouseDelta.y / Screen.height; // vertical
+                rotation *= mouseRotationSensitivityModifier * globalSensitivity * Time.deltaTime;
+
+                rotation += transform.localEulerAngles;
+                rotation.x = Mathf.Clamp(rotation.x, 0f, 80f);
+                rotation.z = 0;
+
+                transform.localEulerAngles = rotation;
+            }
+        }
+    }
+
+    private void processCameraZoom()
+    {
+        if (allowCameraZoom)
+        {
+            // camera zoom via FOV change
+            Camera.main.fieldOfView -= Input.mouseScrollDelta.y * cameraZoomSensitivityModifier;
+            Camera.main.fieldOfView = Mathf.Clamp(Camera.main.fieldOfView, cameraFovMin, cameraFovMax);
+        }
     }
 
     private IEnumerator startCenteringOnPlayer(float centeredThreshold = 1f)
@@ -204,6 +276,7 @@ public class CameraControl : MonoBehaviour
         {
             transform.position -= new Vector3(0, 0, posRelative.z + cameraLimitDistance);
         }
+
         // adjust camera height based on terrain
         float waterLevel = 0;// GameControl.gameSession.mapGenerator.getRegion().getWaterLevelElevation();
         float offsetAboveWater = transform.position.y - (waterLevel) - minCameraToGroundDistance;
@@ -231,7 +304,6 @@ public class CameraControl : MonoBehaviour
         {
             // do nothing
         }
-
     }
 
     public Vector3 getCameraPositionPlayerCentered()

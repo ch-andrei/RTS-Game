@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.18028378, g: 0.22571412, b: 0.30692285, a: 1}
+  m_IndirectSpecularColor: {r: 0.18028334, g: 0.2257134, b: 0.30692226, a: 1}
 --- !u!157 &3
 LightmapSettings:
   m_ObjectHideFlags: 0
@@ -272,63 +272,34 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6e56473b4a8c84a4bb2deb14a573c583, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  yaw:
-    activate: 1
-    keyboardAxis: 0
-    modifiers:
-      leftAlt: 1
-      leftControl: 0
-      leftShift: 0
-    sensitivity: 1
-  pitch:
-    activate: 1
-    keyboardAxis: 1
-    modifiers:
-      leftAlt: 1
-      leftControl: 0
-      leftShift: 0
-    sensitivity: 1
-  roll:
-    activate: 1
-    keyboardAxis: 0
-    modifiers:
-      leftAlt: 1
-      leftControl: 1
-      leftShift: 0
-    sensitivity: 1
-  verticalTranslation:
-    activate: 1
-    keyboardAxis: 1
-    modifiers:
-      leftAlt: 0
-      leftControl: 1
-      leftShift: 0
-    sensitivity: 1
-  horizontalTranslation:
-    activate: 1
-    keyboardAxis: 0
-    modifiers:
-      leftAlt: 0
-      leftControl: 0
-      leftShift: 0
-    sensitivity: 1
-  depthTranslation:
-    activate: 1
-    keyboardAxis: 1
-    modifiers:
-      leftAlt: 0
-      leftControl: 0
-      leftShift: 0
-    sensitivity: 1
-  keyboardHorizontalAxisName: Horizontal
-  keyboardVerticalAxisName: Vertical
+  globalSensitivity: 2
+  allowEdgeScrolling: 0
+  edgeScrollDetectBorderThickness: 15
+  scrollingSensitivityModifier: 10
+  allowMouseRotation: 1
+  mouseRotationSensitivityModifier: 100
+  allowMouseTranslation: 1
+  mouseTranslationSensitivityModifier: 1
+  allowCameraZoom: 1
+  cameraZoomSensitivityModifier: 1
+  cameraFovMin: 30
+  cameraFovMax: 120
+  viewCenterOffset: 200
+  viewCenterOnPlayerOffset: 75
+  viewCenterOnPlayerLimiterInertia: 0.5
+  cameraLimitDistance: 500
+  minCameraToGroundDistance: 2
+  maxCameraToGroundDistance: 200
+  limiterInertia: 0.1
+  cameraTooHighSpeedLimiter: 1.5
+  cameraTooLowSpeedLimiter: 5
 --- !u!114 &200546911
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_PrefabParentObject: {fileID: 0}
   m_PrefabInternal: {fileID: 0}
   m_GameObject: {fileID: 200546905}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ff26db721962cdf4a8edcdfa9a767d2a, type: 3}
   m_Name: 
