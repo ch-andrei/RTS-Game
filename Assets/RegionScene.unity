@@ -191,6 +191,7 @@ GameObject:
   - component: {fileID: 200546906}
   - component: {fileID: 200546910}
   - component: {fileID: 200546911}
+  - component: {fileID: 200546912}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -273,13 +274,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   globalSensitivity: 2
+  scrollingSensitivityModifier: 10
   allowEdgeScrolling: 0
   edgeScrollDetectBorderThickness: 15
-  scrollingSensitivityModifier: 10
-  allowMouseRotation: 1
-  mouseRotationSensitivityModifier: 100
   allowMouseTranslation: 1
   mouseTranslationSensitivityModifier: 1
+  allowMouseRotation: 1
+  mouseRotationSensitivityModifier: 100
   allowCameraZoom: 1
   cameraZoomSensitivityModifier: 1
   cameraFovMin: 30
@@ -287,10 +288,10 @@ MonoBehaviour:
   viewCenterOffset: 200
   viewCenterOnPlayerOffset: 75
   viewCenterOnPlayerLimiterInertia: 0.5
+  limiterInertia: 0.1
   cameraLimitDistance: 500
   minCameraToGroundDistance: 2
   maxCameraToGroundDistance: 200
-  limiterInertia: 0.1
   cameraTooHighSpeedLimiter: 1.5
   cameraTooLowSpeedLimiter: 5
 --- !u!114 &200546911
@@ -305,6 +306,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   profile: {fileID: 11400000, guid: ca1a48c6d109d0740bda90d3b98db9c6, type: 2}
+--- !u!114 &200546912
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_PrefabParentObject: {fileID: 0}
+  m_PrefabInternal: {fileID: 0}
+  m_GameObject: {fileID: 200546905}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 98a3599164527ba4e94f4b7df584b933, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  doubleClickDelay: 0.3
+  mouseButton: 0
 --- !u!1 &227661622
 GameObject:
   m_ObjectHideFlags: 0
@@ -339,7 +353,7 @@ MonoBehaviour:
   gizmoSkip: 20
   regenerate: 0
   regionGenConfig:
-    numberOfTiles: 1500
+    numberOfTiles: 64000
     tileSize: 1
     maxElevation: 100
   heightMapConfig:

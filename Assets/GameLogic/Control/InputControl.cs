@@ -44,8 +44,6 @@ public class InputControl : MonoBehaviour
 
     private GameSession gameSession;
 
-    string attemptedMoveMessage;
-
     void Start()
     {
         // setup all vars
@@ -109,7 +107,7 @@ public class InputControl : MonoBehaviour
         bool rightMouseClick = Input.GetMouseButtonDown(1);
         if (rightMouseClick && !moveMode)
         {
-            changeMoveMode();
+            ChangeMoveMode();
         }
 
         /*PATHFINDING PART */
@@ -122,36 +120,11 @@ public class InputControl : MonoBehaviour
             // TODO optimize this to not recalculate path on every frame
             if (firstClickedTile != null)
             {
-                StartCoroutine(
-                    displayPath(
-                        DijsktraPF.pathFromTo(
-                            gameSession.getRegion(),
-                            firstClickedTile,
-                            new Tile(new Coord(new Vector3(float.MaxValue, float.MaxValue, float.MaxValue)), int.MaxValue, int.MaxValue),
-                            playersCanBlockPath: true
-                            ),
-                        writeToGlobalPathResult: false,
-                        displayTimeInSeconds: 0.01f,
-                        drawExplored: false));
+                DrawMoveRange();
 
                 if (mouseOverTile != null)
                 {
-                    // draw path to the selected tile 
-                    // TODO optimize this to not recalculate path on every frame
-                    if (mouseOverTile != null)
-                        StartCoroutine(
-                            displayPath(
-                                 AstarPF.pathFromTo(
-                                     gameSession.getRegion(),
-                                     firstClickedTile,
-                                     mouseOverTile,
-                                     playersCanBlockPath: true
-                                     ),
-                                 writeToGlobalPathResult: false,
-                                 displayTimeInSeconds: 0.01f,
-                                 drawExplored: false,
-                                 drawCost: true
-                                 ));
+                    DrawPathTo(mouseOverTile);
                 }
             }
             
@@ -168,11 +141,11 @@ public class InputControl : MonoBehaviour
                     secondClickedTile = mouseOverTile;
 
                     // check if right clicked same tile twice
-                    if (firstClickedTile.equals(secondClickedTile))
+                    if (firstClickedTile.Equals(secondClickedTile))
                     {
                         //pathResult = GameControl.gameSession.playerAttemptMove(firstClickedTile, out attemptedMoveMessage, movePlayer: true);
                         StartCoroutine(displayPath(pathResult));
-                        changeMoveMode();
+                        ChangeMoveMode();
                     }
                     else
                     {
@@ -186,30 +159,10 @@ public class InputControl : MonoBehaviour
                 // flip selection order
                 selectionOrder = !selectionOrder;
             }
-
-            // draw path to selected tile
-            // TODO optimize this to not recalculate path every frame
-            if (firstClickedTile != null)
-            {
-                // draw move path
-                StartCoroutine(
-                    displayPath(
-                        DijsktraPF.pathFromTo(
-                            gameSession.getRegion(),
-                            firstClickedTile,
-                            mouseOverTile,
-                            playersCanBlockPath: true
-                            ),
-                        writeToGlobalPathResult: false,
-                        displayTimeInSeconds: 0.01f,
-                        drawExplored: false));
-
-            }
-            
         }
     }
 
-    public static void changeMoveMode()
+    public static void ChangeMoveMode()
     {
         moveMode = !moveMode;
     }
@@ -219,93 +172,101 @@ public class InputControl : MonoBehaviour
         moveMode = false;
     }
 
-    // FOR DEBUGGING PURPOSES
-    public IEnumerator computePath(PathFinder pathFinder, Tile start, Tile goal, float displayTimeInSeconds = 2f, bool writeToGlobalPathResult = true)
-    {
-        if (start != null && goal != null)
-        {
-            // compute path
-            PathResult pr = pathFinder.pathFromTo(gameSession.getRegion(), start, goal);
-            yield return displayPath(pr, displayTimeInSeconds, writeToGlobalPathResult, drawExplored: true);
-        }
+    public void DrawMoveRange() {
+        StartCoroutine(
+            displayPath(
+                DijsktraPF.pathFromTo(
+                    gameSession.getRegion(),
+                    firstClickedTile,
+                    new Tile(new Coord(new Vector3(float.MaxValue, float.MaxValue, float.MaxValue)), int.MaxValue, int.MaxValue),
+                    playersCanBlockPath: true
+                    ),
+                writeToGlobalPathResult: false,
+                displayTimeInSeconds: 0.01f,
+                drawExplored: false));
     }
 
-    public IEnumerator displayPath(PathResult pr, float displayTimeInSeconds = 0.01f, bool drawPath = true, bool writeToGlobalPathResult = true, bool drawExplored = false, bool drawCost = false)
+    public void DrawPathTo(Tile tile)
     {
-        List<GameObject> pathIndicators = null;
-        List<GameObject> exploredIndicators = null;
-        GameObject costIndicator = null;
+        StartCoroutine(
+            displayPath(
+                 AstarPF.pathFromTo(
+                     gameSession.getRegion(),
+                     firstClickedTile,
+                     tile,
+                     playersCanBlockPath: true
+                     ),
+                 writeToGlobalPathResult: false,
+                 displayTimeInSeconds: 0.01f,
+                 drawExplored: false,
+                 drawCost: true
+                 ));
+    }
 
-        if (pr != null)
+    public IEnumerator displayPath(PathResult pr, string tag = "", float displayTimeInSeconds = 2f, bool drawPath = true, bool writeToGlobalPathResult = true, bool drawExplored = false, bool drawCost = false)
+    {
+        string currentHash = pr.computeHashString();
+
         {
-            if (writeToGlobalPathResult)
-                pathResult = pr;
+            Debug.Log("Drawing some path... " + Time.time);
 
-            // reset indicator lists
-            pathIndicators = new List<GameObject>();
-            exploredIndicators = new List<GameObject>();
 
-            if (drawPath)
+            List<GameObject> pathIndicators = null;
+            List<GameObject> exploredIndicators = null;
+            GameObject costIndicator = null;
+
+            if (pr != null)
             {
-                // draw path info
-                foreach (Tile tile in pr.getTilesOnPathStartFirst())
+                if (writeToGlobalPathResult)
+                    pathResult = pr;
+
+                // reset indicator lists
+                pathIndicators = new List<GameObject>();
+                exploredIndicators = new List<GameObject>();
+
+                if (drawPath)
                 {
-                    GameObject _pathIndicator = Instantiate(pathIndicator);
-                    _pathIndicator.transform.parent = this.transform;
-                    _pathIndicator.transform.position = tile.coord.getPos() + ySelectionOffset;
-                    pathIndicators.Add(_pathIndicator);
+                    // draw path info
+                    foreach (Tile tile in pr.getTilesOnPathStartFirst())
+                    {
+                        GameObject _pathIndicator = Instantiate(pathIndicator);
+                        _pathIndicator.transform.parent = this.transform;
+                        _pathIndicator.transform.position = tile.coord.getPos() + ySelectionOffset;
+                        pathIndicators.Add(_pathIndicator);
+                    }
+                }
+
+
+                if (drawExplored)
+                {
+                    // draw explored info
+                    foreach (Tile tile in pr.getExploredTiles())
+                    {
+                        GameObject exploredIndicator = Instantiate(pathExploredIndicator);
+                        exploredIndicator.transform.parent = this.transform;
+                        exploredIndicator.transform.position = tile.coord.getPos() + ySelectionOffset;
+                        exploredIndicators.Add(exploredIndicator);
+                    }
                 }
             }
 
+            // wait for some time
+            yield return new WaitForSeconds(displayTimeInSeconds);
 
-            if (drawExplored)
-            {
-                // draw explored info
-                foreach (Tile tile in pr.getExploredTiles())
+            // destroy indicators
+            if (pathIndicators != null)
+                foreach (GameObject go in pathIndicators)
                 {
-                    GameObject exploredIndicator = Instantiate(pathExploredIndicator);
-                    exploredIndicator.transform.parent = this.transform;
-                    exploredIndicator.transform.position = tile.coord.getPos() + ySelectionOffset;
-                    exploredIndicators.Add(exploredIndicator);
+                    Destroy(go);
                 }
-            }
-
-            //if (drawCost)
-            //{
-            //    if (pr.reachedGoal)
-            //    {
-            //        costIndicator = Instantiate(Resources.Load("Prefabs/Text/TileCostObject"), this.transform) as GameObject;
-
-            //        // set position
-            //        Tile tile = pr.getTilesOnPath()[0];
-            //        costIndicator.transform.position = tile.coord.getPos() + ySelectionOffset * 2;
-
-            //        // set text
-            //        string pathCost = Mathf.CeilToInt(pr.pathCost) + "AP";
-            //        costIndicator.transform.GetChild(0).GetComponent<TextMesh>().text = pathCost;
-
-            //        costIndicator.transform.LookAt(Camera.main.transform);
-            //        costIndicator.transform.forward = -costIndicator.transform.forward;
-            //    }
-            //}
+                if (exploredIndicators != null)
+                    foreach (GameObject go in exploredIndicators)
+                    {
+                        Destroy(go);
+                    }
+                if (costIndicator != null)
+                    Destroy(costIndicator);
         }
-
-        // wait for some time
-        yield return new WaitForSeconds(displayTimeInSeconds);
-
-        // destroy indicators
-        if (pathIndicators != null)
-            foreach (GameObject go in pathIndicators)
-            {
-                Destroy(go);
-            }
-        if (exploredIndicators != null)
-            foreach (GameObject go in exploredIndicators)
-            {
-                Destroy(go);
-            }
-        if (costIndicator != null)
-            Destroy(costIndicator);
     }
 
     void OnGUI()

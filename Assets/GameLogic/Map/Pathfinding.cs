@@ -60,6 +60,16 @@ namespace Pathfinding
         {
             this.exploredPathTiles.Add(pt);
         }
+
+        public string computeHashString()
+        {
+            string hash = "";
+            foreach (Tile tile in getExploredTiles())
+            {
+                hash += tile.index;
+            }
+            return hash;
+        }
     }
 
     // to be used as key in a dictionary
