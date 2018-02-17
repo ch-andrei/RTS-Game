@@ -11,7 +11,7 @@ using Regions;
 [AddComponentMenu("Camera-Control/Keyboard")]
 public class CameraControl : MonoBehaviour
 {
-    public float globalSensitivity = 2f; // global movement speed
+    public float globalSensitivity = 10f; // global camera speed sensitivity
 
     #region MouseControlConfiguration
 
@@ -27,17 +27,17 @@ public class CameraControl : MonoBehaviour
     // mouse control camera translation
     [Header("Mouse Scrolling")]
     public bool allowMouseTranslation = true;
-    public float mouseTranslationSensitivityModifier = 1f; // mouse translation movement speed modifier
+    public float mouseTranslationSensitivityModifier = 0.75f; // mouse translation movement speed modifier
 
     // mouse rotation control
     [Header("Mouse Rotation")]
     public bool allowMouseRotation = true;
-    public float mouseRotationSensitivityModifier = 100f; // mouse rotation movement speed modifier
+    public float mouseRotationSensitivityModifier = 10f; // mouse rotation movement speed modifier
 
     // zoom with FOV 
     [Header("Camera zoom")]
     public bool allowCameraZoom = true;
-    public float cameraZoomSensitivityModifier = 1f;
+    public float cameraZoomSensitivityModifier = 2f; // mouse zoom speed modifier
     public float cameraFovMin = 30f;
     public float cameraFovMax = 120f;
 
@@ -45,8 +45,16 @@ public class CameraControl : MonoBehaviour
 
     #region CameraControlConfiguration
 
+    [Header("Camera movement inertia")]
+    public bool allowCameraInertia = true;
+    [Range(0.01f, 0.99f)]
+    public float inertiaDecay = 0.95f;
+
     // camera restriction
     [Header("Camera restriction")]
+
+    public float cameraVerticalAngleMin = 10f;
+    public float cameraVerticalAngleMax = 80f;
 
     public float viewCenterOffset = 200f; // camera view center point offset; calculated as this far in front of camera
     public float viewCenterOnPlayerOffset = 75f; // how far from player position the camera will be set when focusing on player
@@ -64,41 +72,24 @@ public class CameraControl : MonoBehaviour
 
     #endregion
 
-    // Keyboard axes buttons in the same order as Unity
-    public enum KeyboardAxis { Horizontal = 0, Vertical = 1, None = 3 }
+    #region PrivateVariables
 
-    [System.Serializable]
-    // Handles left modifiers keys (Alt, Ctrl, Shift)
-    public class Modifiers
-    {
-        public bool leftAlt;
-        public bool leftControl;
-        public bool leftShift;
+    private bool cameraMoving = false;
+    private bool cameraRotating = false;
+    private bool cameraZooming = false;
 
-        public bool checkModifiers()
-        {
-            return (!leftAlt ^ Input.GetKey(KeyCode.LeftAlt)) &&
-                (!leftControl ^ Input.GetKey(KeyCode.LeftControl)) &&
-                (!leftShift ^ Input.GetKey(KeyCode.LeftShift));
-        }
-    }
+    private bool mouseOverGame = false;
 
-    [System.Serializable]
-    // Handles common parameters for translations and rotations
-    public class KeyboardControlConfiguration
-    {
-        public bool activate;
-        public KeyboardAxis keyboardAxis;
-        public Modifiers modifiers;
-        public float sensitivity;
+    private Vector3 mousePositionAtRightClickDown;
+    private Vector3 mousePositionAtMiddleClickDown;
 
-        public bool isActivated()
-        {
-            return activate && keyboardAxis != KeyboardAxis.None && modifiers.checkModifiers();
-        }
-    }
-
-    private Vector3 mousePreviousPosition;
+    // inertia
+    private Vector3 cameraPreviousPosition;
+    private Vector3 cameraPreviousRotation;
+    private float cameraPreviousFov;
+    private Vector3 inertiaPositionDelta;
+    private Vector3 inertiaRotationDelta;
+    private float inertiaFovDelta;
 
     private Vector3 restrictionCenterPoint, viewCenterPoint;
 
@@ -106,6 +97,8 @@ public class CameraControl : MonoBehaviour
     private bool centeringOnPlayer = false;
 
     private Region region;
+
+    #endregion
 
     void Start()
     {
@@ -117,12 +110,24 @@ public class CameraControl : MonoBehaviour
         restrictionCenterPoint = new Vector3(0, 0, 0); // GameControl.gameSession.humanPlayer.getPos();
         viewCenterPoint = region.getTileAt(restrictionCenterPoint).coord.getPos();
 
-        mousePreviousPosition = Input.mousePosition;
+        mousePositionAtRightClickDown = Input.mousePosition;
+        mousePositionAtMiddleClickDown = Input.mousePosition;
+
+        cameraPreviousPosition = transform.position;
+        cameraPreviousRotation = transform.localEulerAngles;
+        cameraPreviousFov = Camera.main.fieldOfView;
+
+        inertiaPositionDelta = Vector3.zero;
+        inertiaRotationDelta = Vector3.zero;
+        inertiaFovDelta = 0;
     }
 
-    // LateUpdate  is called once per frame after all Update are done
-    void LateUpdate()
+    void Update()
     {
+        cameraMoving = false;
+        cameraRotating = false;
+        cameraZooming = false;
+
         if (toggleCenterPointFocus && !centeringOnPlayer)
         {
             toggleCenterPointFocus = false;
@@ -138,30 +143,56 @@ public class CameraControl : MonoBehaviour
 
         viewCenterPoint = cameraPos + cameraDir * viewCenterOffset;
 
+        // right click
         if (Input.GetMouseButtonDown(1))
         {
-            mousePreviousPosition = Input.mousePosition;
-            Debug.Log(mousePreviousPosition);
+            mousePositionAtRightClickDown = Input.mousePosition;
         }
 
-        processCameraMovement();
-        processCameraRotation();
-        processCameraZoom();
+        if (Input.GetMouseButtonDown(2))
+        {
+            mousePositionAtMiddleClickDown = Input.mousePosition;
+        }
 
-        limitCamera();
+        // mouse cursor position check
+        if (Input.mousePosition.x >= 0 &&
+                Input.mousePosition.y >= 0 &&
+                Input.mousePosition.x <= Screen.width &&
+                Input.mousePosition.y <= Screen.height)
+        {
+            mouseOverGame = true;
+        }
+
+        Vector3 positionDelta = processCameraMovement();
+        Vector3 rotationDelta = processCameraRotation();
+        float fovDelta = processCameraZoom();
+
+        processCameraDeltas(positionDelta, rotationDelta, fovDelta);
+
+        RestrictCamera();
+
+        //Debug.Log("Deltas: pos [" + (transform.position - cameraPreviousPosition).magnitude + "], rot [" + (transform.localEulerAngles - cameraPreviousRotation).magnitude + "]");
+
+        cameraPreviousPosition = transform.position;
+        cameraPreviousRotation = transform.localEulerAngles;
     }
+
+    // LateUpdate  is called once per frame after all Update are done
+    void LateUpdate()
+    {
+
+    }   
 
     public void toggleCenterOnPlayer()
     {
         toggleCenterPointFocus = !toggleCenterPointFocus;
     }
 
-    private void processCameraMovement() {
-        Vector3 movement = Vector3.zero;
+    // keyboard and edge scrolling
+    private Vector3 processCameraMovement() {
+        Vector3 positionDelta = Vector3.zero;
 
-        // keyboard and edge scrolling
-
-        Vector3 mouseDelta = Input.mousePosition - mousePreviousPosition;
+        Vector3 mouseDelta = Input.mousePosition - mousePositionAtMiddleClickDown;
         Vector3 forward = transform.forward;
         Vector3 right = transform.right;
 
@@ -170,76 +201,110 @@ public class CameraControl : MonoBehaviour
 
         if (Input.GetKey(KeyCode.W) || (allowEdgeScrolling && Input.mousePosition.y >= Screen.height - edgeScrollDetectBorderThickness))
         {
-            movement += forward;
+            positionDelta += forward;
         }
         if (Input.GetKey(KeyCode.S) || (allowEdgeScrolling && Input.mousePosition.y <= edgeScrollDetectBorderThickness))
         {
-            movement -= forward;
+            positionDelta -= forward;
         }
         if (Input.GetKey(KeyCode.A) || (allowEdgeScrolling && Input.mousePosition.x <= edgeScrollDetectBorderThickness))
         {
-            movement -= right;
+            positionDelta -= right;
         }
         if (Input.GetKey(KeyCode.D) || (allowEdgeScrolling && Input.mousePosition.x >= Screen.width - edgeScrollDetectBorderThickness))
         {
-            movement += right;
+            positionDelta += right;
         }
         if (Input.GetKey(KeyCode.Q))
         {
-            movement += Vector3.down;
+            positionDelta += Vector3.down;
         }
         if (Input.GetKey(KeyCode.E))
         {
-            movement += Vector3.up;
+            positionDelta += Vector3.up;
         }
 
         // scrolling with mouse
         if (allowMouseTranslation && Input.GetMouseButton(2))
         {
-            Vector3 mouseTranslation = Vector3.zero;
-            mouseTranslation += forward * -mouseDelta.x / Screen.width;
-            mouseTranslation += right * -mouseDelta.y / Screen.height;
+            if (mouseOverGame)
+            {
+                Vector3 mouseTranslation = Vector3.zero;
+                mouseTranslation += right * mouseDelta.x / Screen.width;
+                mouseTranslation += forward * mouseDelta.y / Screen.height;
 
-            movement += mouseTranslation * mouseTranslationSensitivityModifier;
+                positionDelta += mouseTranslation * mouseTranslationSensitivityModifier;
+            }
         }
 
-        movement *= scrollingSensitivityModifier * globalSensitivity * Time.deltaTime;
-        transform.Translate(movement, Space.World);
+        positionDelta *= scrollingSensitivityModifier * globalSensitivity * Time.deltaTime;
+
+        if (Vector3.zero != positionDelta)
+            cameraMoving = true;
+
+        return positionDelta;
     }
 
-    private void processCameraRotation()
+    private Vector3 processCameraRotation()
     {
+        Vector3 rotation = Vector3.zero;
+
         if (allowMouseRotation && Input.GetMouseButton(1)) // right mouse
         {
-            if (mousePreviousPosition.x >= 0 &&
-                mousePreviousPosition.y >= 0 &&
-                mousePreviousPosition.x <= Screen.width &&
-                mousePreviousPosition.y <= Screen.height)
+            if (mouseOverGame)
             {
-                Vector3 rotation = Vector3.zero;
-                Vector3 mouseDelta = Input.mousePosition - mousePreviousPosition;
+
+                Vector3 mouseDelta = Input.mousePosition - mousePositionAtRightClickDown;
 
                 rotation += Vector3.up * mouseDelta.x / Screen.width; // horizontal
                 rotation += Vector3.left * mouseDelta.y / Screen.height; // vertical
+
                 rotation *= mouseRotationSensitivityModifier * globalSensitivity * Time.deltaTime;
 
-                rotation += transform.localEulerAngles;
-                rotation.x = Mathf.Clamp(rotation.x, 0f, 80f);
-                rotation.z = 0;
-
-                transform.localEulerAngles = rotation;
+                if (Vector3.zero != rotation)
+                    cameraRotating = true;
             }
         }
+
+        return rotation;
     }
 
-    private void processCameraZoom()
+    private float processCameraZoom()
     {
+        float fovDelta = 0;
+
         if (allowCameraZoom)
         {
-            // camera zoom via FOV change
-            Camera.main.fieldOfView -= Input.mouseScrollDelta.y * cameraZoomSensitivityModifier;
-            Camera.main.fieldOfView = Mathf.Clamp(Camera.main.fieldOfView, cameraFovMin, cameraFovMax);
+            if (mouseOverGame)
+            {
+                // camera zoom via FOV change
+                fovDelta = Input.mouseScrollDelta.y * cameraZoomSensitivityModifier;
+
+                if (fovDelta != 0)
+                    cameraZooming = true;
+            }
         }
+
+        return fovDelta;
+    }
+
+    private void processCameraDeltas(Vector3 positionDelta, Vector3 rotationDelta, float fovDelta)
+    {
+        if (allowCameraInertia)
+        {
+            inertiaPositionDelta = inertiaPositionDelta * inertiaDecay + positionDelta * (1f - inertiaDecay);
+            inertiaRotationDelta = inertiaRotationDelta * inertiaDecay + rotationDelta * (1f - inertiaDecay);
+            inertiaFovDelta = inertiaFovDelta * inertiaDecay + fovDelta * (1f - inertiaDecay);
+        }
+
+        // apply position delta
+        transform.Translate(inertiaPositionDelta, Space.World);
+
+        // apply rotation delta
+        transform.localEulerAngles += inertiaRotationDelta; 
+
+        // apply zoom delta
+        Camera.main.fieldOfView -= inertiaFovDelta;
     }
 
     private IEnumerator startCenteringOnPlayer(float centeredThreshold = 1f)
@@ -256,7 +321,7 @@ public class CameraControl : MonoBehaviour
         centeringOnPlayer = false;
     }
 
-    private void limitCamera()
+    private void RestrictCamera()
     {
         // check if camera is out of bounds 
         Vector3 posRelative = transform.position - restrictionCenterPoint;
@@ -304,6 +369,15 @@ public class CameraControl : MonoBehaviour
         {
             // do nothing
         }
+
+        // restrict rotation
+        Vector3 rotation = transform.localEulerAngles;
+        rotation.x = Mathf.Clamp(rotation.x, cameraVerticalAngleMin, cameraVerticalAngleMax);
+        rotation.z = 0;
+        transform.localEulerAngles = rotation;
+
+        // restrict fov
+        Camera.main.fieldOfView = Mathf.Clamp(Camera.main.fieldOfView, cameraFovMin, cameraFovMax);
     }
 
     public Vector3 getCameraPositionPlayerCentered()

@@ -189,8 +189,8 @@ GameObject:
   - component: {fileID: 200546908}
   - component: {fileID: 200546907}
   - component: {fileID: 200546906}
-  - component: {fileID: 200546910}
   - component: {fileID: 200546911}
+  - component: {fileID: 200546910}
   - component: {fileID: 200546912}
   m_Layer: 0
   m_Name: Main Camera
@@ -273,18 +273,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6e56473b4a8c84a4bb2deb14a573c583, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  globalSensitivity: 2
+  globalSensitivity: 10
   scrollingSensitivityModifier: 10
   allowEdgeScrolling: 0
   edgeScrollDetectBorderThickness: 15
   allowMouseTranslation: 1
-  mouseTranslationSensitivityModifier: 1
+  mouseTranslationSensitivityModifier: 0.75
   allowMouseRotation: 1
-  mouseRotationSensitivityModifier: 100
+  mouseRotationSensitivityModifier: 10
   allowCameraZoom: 1
-  cameraZoomSensitivityModifier: 1
+  cameraZoomSensitivityModifier: 2
   cameraFovMin: 30
-  cameraFovMax: 120
+  cameraFovMax: 100
+  allowCameraInertia: 1
+  inertiaDecay: 0.95
+  cameraVerticalAngleMin: 10
+  cameraVerticalAngleMax: 80
   viewCenterOffset: 200
   viewCenterOnPlayerOffset: 75
   viewCenterOnPlayerLimiterInertia: 0.5
@@ -353,8 +357,8 @@ MonoBehaviour:
   gizmoSkip: 20
   regenerate: 0
   regionGenConfig:
-    numberOfTiles: 64000
-    tileSize: 1
+    numberOfTiles: 2000
+    tileSize: 10
     maxElevation: 100
   heightMapConfig:
     preset: -1
@@ -793,6 +797,9 @@ MonoBehaviour:
   maxActionPoints: 10
   actionPoints: 10
   showGUI: 1
+  guiMenuWidth: 200
+  guiMenuHeight: 300
+  ySelectionOffset: {x: 0, y: 0.05, z: 0}
 --- !u!1 &1928470303
 GameObject:
   m_ObjectHideFlags: 0
