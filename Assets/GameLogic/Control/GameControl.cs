@@ -8,70 +8,79 @@ using Utilities.Misc;
 using Pathfinding;
 
 [AddComponentMenu("Input-Control")]
-public class InputControl : MonoBehaviour
+public class GameControl : MonoBehaviour
 {
+    #region Configuration
+
+    [Header("Movement configuration")]
     [Range(0,100)]
     public int maxActionPoints = 50;
-
     [Range(0, 100)]
     public int actionPoints = 50;
 
+    [Header("GUI configuration")]
     public bool showGUI = true;
+    public int guiMenuWidth = 200;
+    public int guiMenuHeight = 300;
 
-    int menuWidth = 200;
-    int menuHeight = 300;
+    [Header("Pathfinding configuration")]
+    public InputModifiers.KeyboardControlConfiguration pathfindKeyControl;
 
-    static bool selectionOrder = true;
-    static bool moveMode = true;
-
-    public static Tile SelectedTile { get { return selectedTile; } }
-
-    static Tile mouseOverTile, selectedTile, firstClickedTile, secondClickedTile;
-    static int[] currentSelectedIndex;
-    static Vector3 ySelectionOffset = new Vector3(0, 0.05f, 0);
-
-    static GUIStyle guiStyle;
-
-    // selection game object
-    GameObject mouseOverIndicator, selectionIndicator;
-
+    [Header("Indicators")]
+    #region SelectionIndicators
+    public GameObject mouseOverIndicator;
+    public GameObject selectionIndicator;
+    #endregion
+    #region PathIndicators
     // path related game objects
-    GameObject pathIndicator;
-    GameObject pathExploredIndicator;
+    public GameObject pathIndicator;
+    public GameObject pathExploredIndicator;
+    #endregion
+
+    #endregion
+
+    #region PrivateVariables
+
+    private bool selectionOrder = true;
+    private bool moveMode = true;
+
+    private Tile mouseOverTile, selectedTile, firstClickedTile, secondClickedTile;
+    public Tile SelectedTile { get { return selectedTile; } }
 
     PathFinder DijsktraPF, AstarPF;
     PathResult pathResult;
 
     private GameSession gameSession;
 
+    DoubleClickDetector dcd;
+
+    static GUIStyle guiStyle;
+
+    #endregion
+
     void Start()
     {
-        // setup all vars
-
-        GameObject go = GameObject.FindGameObjectWithTag("GameSession");
-        gameSession = (GameSession)go.GetComponent(typeof(GameSession));
-
-        mouseOverIndicator = GameObject.FindGameObjectWithTag("MouseOverIndicator");
-        selectionIndicator = GameObject.FindGameObjectWithTag("SelectionIndicator");
-        pathIndicator = GameObject.FindGameObjectWithTag("PathIndicator");
-        pathExploredIndicator = GameObject.FindGameObjectWithTag("PathExploredIndicator");
-
-        // create GUI style
-        guiStyle = new GUIStyle();
-        guiStyle.alignment = TextAnchor.LowerLeft;
-        guiStyle.normal.textColor = Tools.hexToColor("#153870");
+        gameSession = (GameSession)GameObject.FindGameObjectWithTag("GameSession").GetComponent(typeof(GameSession));
 
         AstarPF = new AstarPathFinder(maxDepth: 50, maxCost: 1000, maxIncrementalCost: maxActionPoints);
         DijsktraPF = new DijkstraPathFinder(maxDepth: maxActionPoints,
                                             maxCost: actionPoints,
                                             maxIncrementalCost: maxActionPoints
                                             );
+
+        dcd = gameObject.GetComponent<DoubleClickDetector>();
+
+        // create GUI style
+        guiStyle = new GUIStyle();
+        guiStyle.alignment = TextAnchor.LowerLeft;
+        guiStyle.normal.textColor = Tools.hexToColor("#153870");
+
+        mouseOverIndicator = Instantiate(mouseOverIndicator, transform);
+        selectionIndicator = Instantiate(selectionIndicator, transform);
     }
 
     void Update()
     {
-        /// *** RAYCASTING FOR SELECTING TILES PART *** ///
-
         // update selection tile
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         RaycastHit hitInfo;
@@ -86,7 +95,7 @@ public class InputControl : MonoBehaviour
             {
                 if ((mouseOverTile = gameSession.getRegion().getTileAt(hitInfo.point)) != null)
                 {
-                    mouseOverIndicator.transform.position = mouseOverTile.coord.getPos() + ySelectionOffset; // move mouseOverIndicator
+                    mouseOverIndicator.transform.position = mouseOverTile.coord.getPos(); // move mouseOverIndicator
                 }
                 else
                 {
@@ -96,16 +105,15 @@ public class InputControl : MonoBehaviour
         }
 
         // left click
-        bool leftMouseClick = Input.GetMouseButtonDown(0);
-        if (leftMouseClick && mouseOverTile != null)
+        if (dcd.IsDoubleClick() && mouseOverTile != null)
         {
-            selectionIndicator.transform.position = mouseOverTile.coord.getPos() + ySelectionOffset; // move selectionTileIndicator
+            selectionIndicator.transform.position = mouseOverTile.coord.getPos(); // move selectionTileIndicator
             selectedTile = mouseOverTile;
         }
 
         // right click
         bool rightMouseClick = Input.GetMouseButtonDown(1);
-        if (rightMouseClick && !moveMode)
+        if (pathfindKeyControl.isActivated())
         {
             ChangeMoveMode();
         }
@@ -162,12 +170,12 @@ public class InputControl : MonoBehaviour
         }
     }
 
-    public static void ChangeMoveMode()
+    public void ChangeMoveMode()
     {
         moveMode = !moveMode;
     }
 
-    public static void resetMouseControlView()
+    public void resetMouseControlView()
     {
         moveMode = false;
     }
@@ -208,9 +216,6 @@ public class InputControl : MonoBehaviour
         string currentHash = pr.computeHashString();
 
         {
-            Debug.Log("Drawing some path... " + Time.time);
-
-
             List<GameObject> pathIndicators = null;
             List<GameObject> exploredIndicators = null;
             GameObject costIndicator = null;
@@ -229,22 +234,19 @@ public class InputControl : MonoBehaviour
                     // draw path info
                     foreach (Tile tile in pr.getTilesOnPathStartFirst())
                     {
-                        GameObject _pathIndicator = Instantiate(pathIndicator);
-                        _pathIndicator.transform.parent = this.transform;
-                        _pathIndicator.transform.position = tile.coord.getPos() + ySelectionOffset;
+                        GameObject _pathIndicator = Instantiate(pathIndicator, this.transform);
+                        _pathIndicator.transform.position = tile.coord.getPos();
                         pathIndicators.Add(_pathIndicator);
                     }
                 }
-
 
                 if (drawExplored)
                 {
                     // draw explored info
                     foreach (Tile tile in pr.getExploredTiles())
                     {
-                        GameObject exploredIndicator = Instantiate(pathExploredIndicator);
-                        exploredIndicator.transform.parent = this.transform;
-                        exploredIndicator.transform.position = tile.coord.getPos() + ySelectionOffset;
+                        GameObject exploredIndicator = Instantiate(pathExploredIndicator, transform);
+                        exploredIndicator.transform.position = tile.coord.getPos();
                         exploredIndicators.Add(exploredIndicator);
                     }
                 }
@@ -276,17 +278,17 @@ public class InputControl : MonoBehaviour
             if (selectedTile != null)
             {
                 string currentSelection = "Selected " + selectedTile.coord.getPos();
-                GUI.Box(new Rect(Screen.width - menuWidth, Screen.height - menuHeight, menuWidth, menuHeight), currentSelection);
+                GUI.Box(new Rect(Screen.width - guiMenuWidth, Screen.height - guiMenuHeight, guiMenuWidth, guiMenuHeight), currentSelection);
             }
             if (firstClickedTile != null)
             {
                 string leftSelection = "First tile\n" + firstClickedTile.coord.getPos();
-                GUI.Label(new Rect(0, Screen.height - menuHeight, menuWidth, menuHeight), leftSelection, guiStyle);
+                GUI.Label(new Rect(0, Screen.height - guiMenuHeight, guiMenuWidth, guiMenuHeight), leftSelection, guiStyle);
             }
             if (secondClickedTile != null)
             {
                 string rightSelection = "Second tile\n" + secondClickedTile.coord.getPos();
-                GUI.Label(new Rect(0, Screen.height - 2 * menuHeight, menuWidth, menuHeight), rightSelection, guiStyle);
+                GUI.Label(new Rect(0, Screen.height - 2 * guiMenuHeight, guiMenuWidth, guiMenuHeight), rightSelection, guiStyle);
             }
             if (pathResult != null)
             {
@@ -295,7 +297,7 @@ public class InputControl : MonoBehaviour
                 {
                     pathInfo += "\n" + tile.index;
                 }
-                GUI.Label(new Rect(menuWidth, Screen.height - menuHeight, menuWidth, menuHeight), pathInfo, guiStyle);
+                GUI.Label(new Rect(guiMenuWidth, Screen.height - guiMenuHeight, guiMenuWidth, guiMenuHeight), pathInfo, guiStyle);
             }
         }
     }

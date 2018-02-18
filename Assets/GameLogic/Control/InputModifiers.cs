@@ -1,10 +1,7 @@
 ﻿using UnityEngine;
 
-public class InputModifiers {
-
-    // Keyboard axes buttons in the same order as Unity
-    public enum KeyboardAxis { Horizontal = 0, Vertical = 1, None = 3 }
-
+public class InputModifiers
+{
     [System.Serializable]
     // Handles left modifiers keys (Alt, Ctrl, Shift)
     public class Modifiers
@@ -25,14 +22,17 @@ public class InputModifiers {
     // Handles common parameters for translations and rotations
     public class KeyboardControlConfiguration
     {
-        public bool activate;
-        public KeyboardAxis keyboardAxis;
         public Modifiers modifiers;
-        public float sensitivity;
+        public char inputKey;
 
         public bool isActivated()
         {
-            return activate && keyboardAxis != KeyboardAxis.None && modifiers.checkModifiers();
+            return Input.GetKeyDown(inputKey.ToString()) && modifiers.checkModifiers();
+        }
+
+        public bool isHeld()
+        {
+            return Input.GetKey(inputKey.ToString()) && modifiers.checkModifiers();
         }
     }
 }

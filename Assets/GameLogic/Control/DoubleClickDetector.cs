@@ -16,7 +16,7 @@ public class DoubleClickDetector : MonoBehaviour
     private int numberOfClicks = 0;
     private float timeSinceLastClick = 0.0f;
 
-    bool IsDoubleClick()
+    public bool IsDoubleClick()
     {
         bool isDoubleClick = numberOfClicks == 2;
         if (isDoubleClick)

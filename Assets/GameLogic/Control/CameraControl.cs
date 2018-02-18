@@ -84,9 +84,6 @@ public class CameraControl : MonoBehaviour
     private Vector3 mousePositionAtMiddleClickDown;
 
     // inertia
-    private Vector3 cameraPreviousPosition;
-    private Vector3 cameraPreviousRotation;
-    private float cameraPreviousFov;
     private Vector3 inertiaPositionDelta;
     private Vector3 inertiaRotationDelta;
     private float inertiaFovDelta;
@@ -112,10 +109,6 @@ public class CameraControl : MonoBehaviour
 
         mousePositionAtRightClickDown = Input.mousePosition;
         mousePositionAtMiddleClickDown = Input.mousePosition;
-
-        cameraPreviousPosition = transform.position;
-        cameraPreviousRotation = transform.localEulerAngles;
-        cameraPreviousFov = Camera.main.fieldOfView;
 
         inertiaPositionDelta = Vector3.zero;
         inertiaRotationDelta = Vector3.zero;
@@ -143,12 +136,37 @@ public class CameraControl : MonoBehaviour
 
         viewCenterPoint = cameraPos + cameraDir * viewCenterOffset;
 
+        checkInputConfiguration();
+
+        Vector3 positionDelta = processCameraMovement();
+        Vector3 rotationDelta = processCameraRotation();
+        float fovDelta = processCameraZoom();
+
+        processCameraDeltas(positionDelta, rotationDelta, fovDelta);
+
+        RestrictCamera();
+    }
+
+    // LateUpdate  is called once per frame after all Update are done
+    void LateUpdate()
+    {
+
+    }
+
+    public void toggleCenterOnPlayer()
+    {
+        toggleCenterPointFocus = !toggleCenterPointFocus;
+    }
+
+    private void checkInputConfiguration()
+    {
         // right click
         if (Input.GetMouseButtonDown(1))
         {
             mousePositionAtRightClickDown = Input.mousePosition;
         }
 
+        // middle click
         if (Input.GetMouseButtonDown(2))
         {
             mousePositionAtMiddleClickDown = Input.mousePosition;
@@ -162,30 +180,6 @@ public class CameraControl : MonoBehaviour
         {
             mouseOverGame = true;
         }
-
-        Vector3 positionDelta = processCameraMovement();
-        Vector3 rotationDelta = processCameraRotation();
-        float fovDelta = processCameraZoom();
-
-        processCameraDeltas(positionDelta, rotationDelta, fovDelta);
-
-        RestrictCamera();
-
-        //Debug.Log("Deltas: pos [" + (transform.position - cameraPreviousPosition).magnitude + "], rot [" + (transform.localEulerAngles - cameraPreviousRotation).magnitude + "]");
-
-        cameraPreviousPosition = transform.position;
-        cameraPreviousRotation = transform.localEulerAngles;
-    }
-
-    // LateUpdate  is called once per frame after all Update are done
-    void LateUpdate()
-    {
-
-    }   
-
-    public void toggleCenterOnPlayer()
-    {
-        toggleCenterPointFocus = !toggleCenterPointFocus;
     }
 
     // keyboard and edge scrolling
